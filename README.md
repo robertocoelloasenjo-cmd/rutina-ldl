@@ -2,7 +2,7 @@
 
 App personal para el iPhone que registra lo que como en cada comida y calcula cómo voy frente a mis objetivos para bajar el LDL. La especificación completa está en [SPEC.md](SPEC.md).
 
-**Estado:** versión simplificada. Cada día marcas casillas de lo que has tomado de los alimentos más beneficiosos para el LDL (avena en desayuno y cena, frutos secos, legumbre y Danacol; pescado azul opcional en Ajustes), apuntas el ejercicio (tipo y minutos) y una nota libre. Pantalla **Semana** con contadores y rejilla, e **Historial** por días, semanas y meses. Funciona sin conexión. Faltan copias de seguridad (fase 3). Los datos de la versión anterior (con comidas y alimentos) se convirtieron solos en casillas.
+**Estado:** versión simplificada. Cada día marcas casillas de lo que has tomado de los alimentos más beneficiosos para el LDL (avena en desayuno y cena, frutos secos, legumbre y Danacol; pescado azul opcional en Ajustes), apuntas el ejercicio (tipo y minutos) y una nota libre. Pantalla **Semana** con contadores y rejilla, e **Historial** por días, semanas y meses. Funciona sin conexión. Copias de seguridad (exportar e importar), rachas de días seguidos y semanas buenas, y botón "Lo de siempre". Los datos de la versión anterior (con comidas y alimentos) se convirtieron solos en casillas.
 
 ## Instalar en el iPhone
 
@@ -18,7 +18,7 @@ App personal para el iPhone que registra lo que como en cada comida y calcula c�
 - Todo se guarda **solo en el iPhone**, dentro de la propia app (IndexedDB). No hay servidor, cuentas ni nada que salga del móvil.
 - La web de GitHub solo contiene el programa, nunca tus datos.
 - Al instalarla en la pantalla de inicio, iOS protege los datos para que no se borren solos.
-- **Ojo:** si borras la app de la pantalla de inicio, se borran sus datos. Haz copias (llegan en la fase 3).
+- **Ojo:** si borras la app de la pantalla de inicio, se borran sus datos. Haz copias (ver abajo).
 
 ## Cómo actualizar la app
 
@@ -28,7 +28,26 @@ Para publicar cambios: se suben los archivos a la rama `main` del repositorio `r
 
 ## Copias de seguridad y cambio de iPhone
 
-Llega en la fase 3: un botón **Exportar** en Ajustes que guarda un archivo `.json` en Archivos / iCloud Drive o lo manda por correo, y un botón **Importar** para recuperarlo. Para cambiar de iPhone: exportar en el viejo, instalar la app en el nuevo e importar el archivo. Este apartado se completará con los pasos exactos.
+**Hacer una copia** (la app te avisa si pasan más de 7 días sin hacerla):
+
+1. Abre la app → **Ajustes** → **Exportar copia** (o el botón "Hacer copia ahora" del aviso en "Hoy").
+2. Se abre el menú de compartir del iPhone. Elige **Guardar en Archivos** → **iCloud Drive** (por ejemplo, una carpeta "Rutina LDL") → **Guardar**. También puedes enviártela por correo o WhatsApp.
+3. El archivo se llama `rutina-ldl-AAAA-MM-DD.json`. Puedes guardar varias; la más reciente es la que vale.
+
+**Recuperar una copia:**
+
+1. **Ajustes** → **Importar copia** → elige el archivo en Archivos.
+2. La app te enseña un resumen (fecha de la copia, cuántos días tiene y cuántos coinciden con lo que ya hay) y te deja elegir:
+   - **Combinar**: añade los días de la copia y conserva el resto. Si un día está en los dos sitios, gana el de la copia.
+   - **Reemplazar**: borra todo lo del iPhone y deja solo lo de la copia (pide confirmación).
+
+**Cambiar de iPhone:**
+
+1. En el iPhone viejo: **Exportar copia** y guárdala en iCloud Drive.
+2. En el nuevo: abre Safari, entra en la dirección de la app y **Añadir a pantalla de inicio**.
+3. Abre la app desde el icono → **Ajustes** → **Importar copia** → elige el archivo → **Reemplazar** (o Combinar, da igual si está vacía).
+
+Las copias de versiones antiguas de la app se convierten solas al formato nuevo al importarlas.
 
 ## Detalles técnicos (por si alguien toca el código)
 

@@ -227,3 +227,7 @@ textarea {
 .tick.on .box { background: var(--accent); border-color: var(--accent); }
 .check .grow { flex: 1; }
 .tick .grow { flex: 1; min-width: 0; }
+.streak { flex: none; font-size: .85rem; font-weight: 600; color: var(--warn); white-space: nowrap; }
+.streakline { margin: 8px 0 0; font-size: .88rem; font-weight: 600; color: var(--warn); }
+.warncard { background: var(--warn-soft); border-color: var(--warn); }
+.ticks + .row { margin-top: 10px; }

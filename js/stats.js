@@ -5,7 +5,7 @@
 // El % del periodo es la media de todas las casillas.
 
 import { activeChecks } from './defaults.js';
-import { todayKey, weekDays } from './util.js';
+import { todayKey, weekDays, addDays, weekStart } from './util.js';
 
 export function hasData(day) {
   if (!day) return false;
@@ -94,4 +94,25 @@ export function weekStats(start, data, today = todayKey()) {
   const exRow = keys.map((k) => ({ key: k, future: k > today, ...dayExercise(data.days[k]) }));
 
   return { start, keys, counters, grid, exRow, pct: p.pct, daysWithData: p.daysWithData, period: p };
+}
+
+/** Días seguidos con la casilla marcada, terminando hoy (o ayer si hoy aún no está marcada). */
+export function checkStreak(data, id, today = todayKey()) {
+  const on = (k) => !!(data.days[k] && data.days[k].checks && data.days[k].checks[id]);
+  let k = on(today) ? today : addDays(today, -1);
+  let n = 0;
+  while (on(k)) { n++; k = addDays(k, -1); }
+  return n;
+}
+
+/** Semanas cerradas seguidas (sin contar la actual) con al menos un 80 % de cumplimiento. */
+export function goodWeeksStreak(data, today = todayKey()) {
+  let w = addDays(weekStart(today), -7);
+  let n = 0;
+  for (;;) {
+    const p = periodSummary(weekDays(w), data, 7);
+    if (p.pct == null || p.pct < 80) break;
+    n++; w = addDays(w, -7);
+  }
+  return n;
 }

@@ -27,6 +27,7 @@ export function defaultSettings() {
   return {
     goals: { ...DEFAULT_GOALS },
     checks: Object.fromEntries(CHECKS.map((c) => [c.id, { enabled: c.enabled, target: c.target }])),
+    usual: ['avenaDesayuno', 'avenaCena', 'frutosSecos', 'danacol'], // botón "Lo de siempre"
     lastBackupAt: null,
   };
 }

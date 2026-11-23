@@ -2,8 +2,9 @@ import * as storage from './storage.js';
 import { CHECKS, EXERCISE_TYPES, activeChecks, emptyDay } from './defaults.js';
 import { todayKey, addDays, dayLabel, longDate, esc, uid, weekStart } from './util.js';
 import { renderWeek, renderWeekSummary, renderHistory } from './views.js';
+import { checkStreak, hasData } from './stats.js';
 
-export const APP_VERSION = '0.4.1';
+export const APP_VERSION = '0.5.0';
 
 const view = document.getElementById('view');
 const sheet = document.getElementById('sheet');
@@ -39,11 +40,14 @@ function renderToday() {
   const checks = activeChecks(state.data.settings);
   const done = checks.filter((c) => day.checks[c.id]).length;
 
-  const boxes = checks.map((c) => `
+  const boxes = checks.map((c) => { const st = isToday ? checkStreak(state.data, c.id) : 0; return `
     <button class="tick ${day.checks[c.id] ? 'on' : ''}" data-action="toggle" data-id="${c.id}" aria-pressed="${!!day.checks[c.id]}">
       <span class="box">${day.checks[c.id] ? '✓' : ''}</span>
       <span class="grow"><b>${esc(c.label)}</b><small>${esc(c.hint)}</small></span>
-    </button>`).join('');
+      ${st >= 2 ? `<span class="streak" title="Días seguidos">🔥 ${st}</span>` : ''}
+    </button>`; }).join('');
+  const usual = (state.data.settings.usual || []).filter((id) => checks.some((c) => c.id === id));
+  const usualPending = usual.some((id) => !day.checks[id]);
 
   const ex = (day.exercise || []).map((e) => `
     <li><button class="item" data-action="edit-ex" data-id="${e.id}">
@@ -58,9 +62,12 @@ function renderToday() {
     </header>
     ${isToday ? '' : '<p style="text-align:center;margin:-6px 0 10px"><button class="linkbtn" data-action="go-today">Volver a hoy</button></p>'}
 
+    ${backupWarning()}
+
     <section class="card" aria-label="Casillas del día">
       <h2>¿Qué he tomado? <span class="sub">${done} de ${checks.length}</span></h2>
       <div class="ticks">${boxes}</div>
+      ${usual.length && usualPending ? '<div class="row"><button class="btn soft grow" data-action="usual">✓ Lo de siempre</button></div>' : ''}
     </section>
 
     <section class="card">
@@ -75,6 +82,102 @@ function renderToday() {
       <h2>Notas del día</h2>
       <textarea id="notes" placeholder="Por ejemplo: día caótico, comí una empanada">${esc(day.notes || '')}</textarea>
     </section>`;
+}
+
+// ---------- Copias de seguridad ----------
+const DAY_MS = 86400000;
+function daysSinceBackup() {
+  const t = state.data.settings.lastBackupAt;
+  return t ? Math.floor((Date.now() - new Date(t).getTime()) / DAY_MS) : null;
+}
+function backupWarning() {
+  const n = Object.values(state.data.days).filter(hasData).length;
+  const since = daysSinceBackup();
+  if (!n || (since != null && since < 7) || (since == null && n < 3)) return '';
+  return `<section class="card warncard">
+      <b>${since == null ? 'Aún no has hecho ninguna copia' : `Hace ${since} días de tu última copia`}</b>
+      <p class="hint">Si borras la app o cambias de iPhone, se pierde lo apuntado. Guarda una copia en Archivos o iCloud Drive.</p>
+      <div class="row"><button class="btn primary grow" data-action="export">Hacer copia ahora</button></div>
+    </section>`;
+}
+
+async function doExport() {
+  const data = await storage.exportAll();
+  const name = `rutina-ldl-${todayKey()}.json`;
+  const json = JSON.stringify(data, null, 1);
+  const file = new File([json], name, { type: 'application/json' });
+  try {
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      await navigator.share({ files: [file], title: 'Copia de Rutina LDL' });
+    } else {
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(file);
+      a.download = name;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+    }
+  } catch (err) {
+    if (err && err.name === 'AbortError') return; // cancelado: no cuenta como copia
+    alert('No se pudo exportar: ' + (err.message || err));
+    return;
+  }
+  const s = { ...state.data.settings, lastBackupAt: new Date().toISOString() };
+  await storage.saveSettings(s);
+  state.data.settings = s;
+  render();
+}
+
+function pickImport() {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = '.json,application/json';
+  input.onchange = async () => {
+    const f = input.files && input.files[0];
+    if (!f) return;
+    let raw;
+    try { raw = JSON.parse(await f.text()); } catch (_) { alert('El archivo no es una copia válida.'); return; }
+    if (!raw || raw.app !== 'rutina-ldl' || typeof raw.days !== 'object') { alert('Ese archivo no es una copia de Rutina LDL.'); return; }
+    openImportSummary(raw);
+  };
+  input.click();
+}
+
+function openImportSummary(raw) {
+  const keys = Object.keys(raw.days).sort();
+  const local = Object.keys(state.data.days).filter((k) => hasData(state.data.days[k]));
+  const overlap = keys.filter((k) => state.data.days[k]).length;
+  const when = raw.exportedAt ? new Date(raw.exportedAt).toLocaleString('es-ES', { dateStyle: 'long', timeStyle: 'short' }) : 'fecha desconocida';
+  sheet.innerHTML = `
+    <div class="sheet-inner">
+      <div class="sheet-head"><h3>Importar copia</h3><button class="linkbtn" data-close>Cerrar</button></div>
+      <div class="sheet-body">
+        <p>Copia del <b>${esc(when)}</b>.</p>
+        <p class="hint">Contiene ${keys.length} ${keys.length === 1 ? 'día' : 'días'}${keys.length ? ` (del ${esc(longDate(keys[0]))} al ${esc(longDate(keys[keys.length - 1]))})` : ''}.
+          En este iPhone hay ${local.length} ${local.length === 1 ? 'día apuntado' : 'días apuntados'}; ${overlap} ${overlap === 1 ? 'coincide' : 'coinciden'} con la copia.</p>
+        <p class="hint"><b>Combinar:</b> añade los días de la copia; si un día está en los dos sitios, gana el de la copia. El resto se conserva.<br>
+          <b>Reemplazar:</b> borra todo lo de este iPhone y deja solo lo de la copia.</p>
+      </div>
+      <div class="sheet-foot">
+        <button class="btn danger" data-mode="replace">Reemplazar</button>
+        <button class="btn primary grow" data-mode="merge">Combinar</button>
+      </div>
+    </div>`;
+  sheet.onclick = async (e) => {
+    if (e.target === sheet || e.target.closest('[data-close]')) return closeSheet();
+    const b = e.target.closest('[data-mode]');
+    if (!b) return;
+    const mode = b.dataset.mode;
+    if (mode === 'replace' && !confirm('Se borrará todo lo apuntado en este iPhone y se quedará solo lo de la copia. ¿Seguir?')) return;
+    try {
+      await storage.importAll(raw, mode);
+      state.data = await storage.loadAll();
+      closeSheet(); render();
+      alert('Copia importada.');
+    } catch (err) {
+      alert('No se pudo importar: ' + (err.message || err));
+    }
+  };
+  showSheet();
 }
 
 function renderSettings() {
@@ -93,6 +196,15 @@ function renderSettings() {
     <section class="card">
       <h2>Ejercicio por semana</h2>
       <p class="hint">Aeróbico: ${s.goals.aerobicMin} min · Fuerza: ${s.goals.strengthMin} ${s.goals.strengthMin === 1 ? "sesión" : "sesiones"}.</p>
+    </section>
+    <section class="card">
+      <h2>Copias de seguridad</h2>
+      <p class="hint">Última copia: <b>${daysSinceBackup() == null ? 'nunca' : daysSinceBackup() === 0 ? 'hoy' : `hace ${daysSinceBackup()} ${daysSinceBackup() === 1 ? 'día' : 'días'}`}</b>.</p>
+      <div class="row">
+        <button class="btn primary grow" data-action="export">Exportar copia</button>
+        <button class="btn soft grow" data-action="import">Importar copia</button>
+      </div>
+      <p class="hint">Exportar crea un archivo que puedes guardar en Archivos / iCloud Drive o enviarte. Para cambiar de iPhone: exporta aquí, instala la app en el nuevo e importa el archivo.</p>
     </section>
     <section class="card">
       <h2>Datos en este dispositivo</h2>
@@ -172,6 +284,13 @@ view.addEventListener('click', async (e) => {
     await updateDay((d) => { if (d.checks[id]) delete d.checks[id]; else d.checks[id] = true; });
     const y = window.scrollY; render(); window.scrollTo(0, y);
   }
+  else if (a === 'usual') {
+    const ids = state.data.settings.usual || [];
+    await updateDay((d) => { for (const id of ids) d.checks[id] = true; });
+    const y = window.scrollY; render(); window.scrollTo(0, y);
+  }
+  else if (a === 'export') doExport();
+  else if (a === 'import') pickImport();
   else if (a === 'add-ex') openExercise(null);
   else if (a === 'edit-ex') openExercise(el.dataset.id);
   else if (a === 'open-day') { state.date = el.dataset.date; goTab('hoy'); }

@@ -1,6 +1,6 @@
 // Pantallas "Semana" e "Historial" y el resumen semanal de "Hoy".
 
-import { weekStats, periodSummary, hasData, dayExercise } from './stats.js';
+import { weekStats, periodSummary, hasData, dayExercise, goodWeeksStreak } from './stats.js';
 import { activeChecks } from './defaults.js';
 import { esc, todayKey, weekStart, weekDays, weekRangeLabel, addDays, parseKey, longDate, shortDate, monthLabel, dayLabel } from './util.js';
 
@@ -23,7 +23,13 @@ export function renderWeekSummary(state) {
     <section class="card">
       <h2>Esta semana <button class="linkbtn small" data-action="open-week">Ver semana ›</button></h2>
       <ul class="counters compact">${ws.counters.map(counterRow).join('')}</ul>
+      ${goodWeeksLine(state)}
     </section>`;
+}
+
+function goodWeeksLine(state) {
+  const n = goodWeeksStreak(state.data);
+  return n ? `<p class="streakline">🔥 ${n} ${n === 1 ? 'semana buena' : 'semanas buenas seguidas'} (80 % o más)</p>` : '';
 }
 
 export function renderWeek(state) {
@@ -54,6 +60,7 @@ export function renderWeek(state) {
     <section class="card">
       <h2>Objetivos semanales <span class="sub">${ws.pct == null ? 'sin datos' : `${ws.pct} %`}</span></h2>
       <ul class="counters">${ws.counters.map(counterRow).join('')}</ul>
+      ${isCurrent ? goodWeeksLine(state) : ''}
     </section>
 
     <section class="card">
