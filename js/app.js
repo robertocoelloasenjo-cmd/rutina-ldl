@@ -3,7 +3,7 @@ import { CHECKS, EXERCISE_TYPES, activeChecks, emptyDay } from './defaults.js';
 import { todayKey, addDays, dayLabel, longDate, esc, uid, weekStart } from './util.js';
 import { renderWeek, renderWeekSummary, renderHistory } from './views.js';
 
-export const APP_VERSION = '0.4.0';
+export const APP_VERSION = '0.4.1';
 
 const view = document.getElementById('view');
 const sheet = document.getElementById('sheet');
@@ -92,7 +92,7 @@ function renderSettings() {
     </section>
     <section class="card">
       <h2>Ejercicio por semana</h2>
-      <p class="hint">Aeróbico: ${s.goals.aerobicMin} min · Fuerza: ${s.goals.strengthMin} sesiones.</p>
+      <p class="hint">Aeróbico: ${s.goals.aerobicMin} min · Fuerza: ${s.goals.strengthMin} ${s.goals.strengthMin === 1 ? "sesión" : "sesiones"}.</p>
     </section>
     <section class="card">
       <h2>Datos en este dispositivo</h2>

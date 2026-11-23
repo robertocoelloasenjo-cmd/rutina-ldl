@@ -2,7 +2,7 @@
 
 App personal para el iPhone que registra lo que como en cada comida y calcula cómo voy frente a mis objetivos para bajar el LDL. La especificación completa está en [SPEC.md](SPEC.md).
 
-**Estado:** versión simplificada. Cada día marcas casillas de lo que has tomado de los alimentos más beneficiosos para el LDL (avena en desayuno y cena, frutos secos, legumbre, Danacol, aceite de oliva; pescado azul opcional en Ajustes), apuntas el ejercicio (tipo y minutos) y una nota libre. Pantalla **Semana** con contadores y rejilla, e **Historial** por días, semanas y meses. Funciona sin conexión. Faltan copias de seguridad (fase 3). Los datos de la versión anterior (con comidas y alimentos) se convirtieron solos en casillas.
+**Estado:** versión simplificada. Cada día marcas casillas de lo que has tomado de los alimentos más beneficiosos para el LDL (avena en desayuno y cena, frutos secos, legumbre y Danacol; pescado azul opcional en Ajustes), apuntas el ejercicio (tipo y minutos) y una nota libre. Pantalla **Semana** con contadores y rejilla, e **Historial** por días, semanas y meses. Funciona sin conexión. Faltan copias de seguridad (fase 3). Los datos de la versión anterior (con comidas y alimentos) se convirtieron solos en casillas.
 
 ## Instalar en el iPhone
 

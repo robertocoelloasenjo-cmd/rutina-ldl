@@ -69,13 +69,20 @@ export function migrate(data) {
       goals: { aerobicMin: old.aerobicMin, strengthMin: old.strengthMin } };
     v = 2;
   }
+  if (v === 2) {
+    // Objetivos semanales algo más bajos y sin casilla de aceite: se toman los nuevos valores por defecto.
+    const old = d.settings || {};
+    d.settings = { ...old, goals: {},
+      checks: Object.fromEntries(Object.entries(old.checks || {}).map(([k, c]) => [k, { enabled: !!(c && c.enabled) }])) };
+    v = 3;
+  }
   delete d.foods; delete d.templates;
   d.schemaVersion = v;
   const def = defaultSettings();
   const s = d.settings || {};
   d.settings = { ...def, ...s,
     goals: { ...def.goals, ...Object.fromEntries(Object.entries(s.goals || {}).filter(([, x]) => x != null)) },
-    checks: { ...def.checks, ...(s.checks || {}) } };
+    checks: Object.fromEntries(Object.entries(def.checks).map(([k, c]) => [k, { ...c, ...((s.checks || {})[k] || {}) }])) };
   for (const k of Object.keys(d.days)) d.days[k] = normalizeDay(d.days[k]);
   return d;
 }
