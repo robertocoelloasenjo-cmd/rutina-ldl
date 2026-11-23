@@ -3,7 +3,10 @@ import { MEALS, CATEGORIES, LDL_SCORES, emptyDay } from './defaults.js';
 import { dayTotals, itemContribution, contributionText, qtyText, suggestions, DAILY_INDICATORS, nf, pluralUnit,
   itemScore, itemName, scoreInfo, mealQuality, dayQuality } from './calc.js';
 
-export const APP_VERSION = '0.2.0';
+import { todayKey, addDays, dayLabel, longDate, esc, uid, weekStart } from './util.js';
+import { renderWeek, renderWeekSummary, renderHistory } from './views.js';
+
+export const APP_VERSION = '0.3.0';
 
 const view = document.getElementById('view');
 const sheet = document.getElementById('sheet');
@@ -15,26 +18,6 @@ const state = {
   tab: 'hoy',
   persisted: false,
 };
-
-// ---------- Fechas (siempre en hora local) ----------
-function todayKey() { return dateKey(new Date()); }
-function dateKey(d) {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-}
-function parseKey(k) { const [y, m, d] = k.split('-').map(Number); return new Date(y, m - 1, d); }
-function addDays(k, n) { const d = parseKey(k); d.setDate(d.getDate() + n); return dateKey(d); }
-function dayLabel(k) {
-  const t = todayKey();
-  if (k === t) return 'Hoy';
-  if (k === addDays(t, -1)) return 'Ayer';
-  return capitalize(parseKey(k).toLocaleDateString('es-ES', { weekday: 'long' }));
-}
-function longDate(k) { return parseKey(k).toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' }); }
-const capitalize = (s) => s.charAt(0).toUpperCase() + s.slice(1);
-
-// ---------- Utilidades ----------
-const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-const uid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
 
 function currentDay() {
   return state.data.days[state.date] || emptyDay();
@@ -51,7 +34,8 @@ function render() {
   document.querySelectorAll('.tabbar button').forEach((b) => b.classList.toggle('active', b.dataset.tab === state.tab));
   if (state.tab === 'hoy') view.innerHTML = renderToday();
   else if (state.tab === 'ajustes') view.innerHTML = renderSettings();
-  else view.innerHTML = renderPlaceholder(state.tab);
+  else if (state.tab === 'semana') view.innerHTML = renderWeek(state);
+  else if (state.tab === 'historial') view.innerHTML = renderHistory(state);
 }
 
 function renderToday() {
@@ -106,6 +90,8 @@ function renderToday() {
       ${quality}
     </section>
 
+    ${renderWeekSummary(state)}
+
     ${meals}
 
     <section class="card">
@@ -149,12 +135,6 @@ function renderMeal(m, day) {
         ${tpl && tpl.items.length ? `<button class="btn soft grow" data-action="template" data-meal="${m.id}">${esc(tpl.name)}</button>` : ''}
       </div>
     </section>`;
-}
-
-function renderPlaceholder(tab) {
-  const names = { semana: ['Semana', 'fase 2'], historial: ['Historial', 'fase 2'] };
-  const [n, f] = names[tab] || [tab, ''];
-  return `<div class="placeholder"><h1>${n}</h1><p>Esta pantalla llega en la ${f}.</p></div>`;
 }
 
 function renderSettings() {
@@ -346,6 +326,13 @@ view.addEventListener('click', async (e) => {
   else if (a === 'next-day') { if (state.date < todayKey()) { state.date = addDays(state.date, 1); render(); window.scrollTo(0, 0); } }
   else if (a === 'go-today') { state.date = todayKey(); render(); window.scrollTo(0, 0); }
   else if (a === 'add') openCatalog(el.dataset.meal);
+  else if (a === 'open-day') { state.date = el.dataset.date; goTab('hoy'); }
+  else if (a === 'open-week') { state.weekStart = weekStart(state.date); goTab('semana'); }
+  else if (a === 'open-week-start') { state.weekStart = el.dataset.start; goTab('semana'); }
+  else if (a === 'prev-week') { state.weekStart = addDays(state.weekStart || weekStart(todayKey()), -7); render(); }
+  else if (a === 'next-week') { const n = addDays(state.weekStart || weekStart(todayKey()), 7); if (n <= weekStart(todayKey())) { state.weekStart = n; render(); } }
+  else if (a === 'this-week') { state.weekStart = weekStart(todayKey()); render(); }
+  else if (a === 'history-mode') { state.historyMode = el.dataset.mode; render(); }
   else if (a === 'edit-item') openQty({ mealId: el.dataset.meal, itemId: el.dataset.id });
   else if (a === 'template') {
     const tpl = state.data.templates.find((t) => t.meal === el.dataset.meal);
@@ -398,10 +385,15 @@ document.addEventListener('visibilitychange', () => {
 document.querySelector('.tabbar').addEventListener('click', (e) => {
   const b = e.target.closest('[data-tab]');
   if (!b) return;
-  state.tab = b.dataset.tab;
+  if (b.dataset.tab === 'semana' && state.tab !== 'semana') state.weekStart = weekStart(todayKey());
+  goTab(b.dataset.tab);
+});
+
+function goTab(tab) {
+  state.tab = tab;
   render();
   window.scrollTo(0, 0);
-});
+}
 
 // ---------- Arranque ----------
 async function start() {

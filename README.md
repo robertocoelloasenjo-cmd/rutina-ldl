@@ -2,7 +2,7 @@
 
 App personal para el iPhone que registra lo que como en cada comida y calcula cómo voy frente a mis objetivos para bajar el LDL. La especificación completa está en [SPEC.md](SPEC.md).
 
-**Estado:** fase 1 (base) terminada: pantalla "Hoy" con panel del día, sugerencias, comidas, catálogo (unos 50 alimentos valorados según su efecto sobre el colesterol), calidad de cada comida y del día, plantillas, ejercicio y notas. Funciona sin conexión. Las pantallas Semana, Historial, copias de seguridad y Ajustes editables llegan en las fases siguientes.
+**Estado:** fase 1 (base) terminada: pantalla "Hoy" con panel del día, sugerencias, comidas, catálogo (unos 50 alimentos valorados según su efecto sobre el colesterol), calidad de cada comida y del día, plantillas, ejercicio y notas. Funciona sin conexión. Fase 2 terminada: pantalla **Semana** (contadores semanales con estado, rejilla de cumplimiento diario, calidad por día) con resumen en "Hoy", e **Historial** por días, semanas (con gráfico de las últimas 12) y meses. Faltan copias de seguridad (fase 3) y Ajustes editables (fase 4).
 
 ## Instalar en el iPhone
 
@@ -39,7 +39,10 @@ Llega en la fase 3: un botón **Exportar** en Ajustes que guarda un archivo `.js
 | `index.html` | Página única de la app |
 | `css/styles.css` | Estilos (modo claro y oscuro automáticos, zonas seguras del iPhone) |
 | `js/app.js` | Pantallas y botones |
-| `js/calc.js` | Cálculo de totales y sugerencias (nada se guarda, todo se recalcula) |
+| `js/calc.js` | Cálculo de totales, sugerencias y calidad de las comidas (nada se guarda, todo se recalcula) |
+| `js/stats.js` | Resúmenes de día, semana y mes |
+| `js/views.js` | Pantallas Semana e Historial |
+| `js/util.js` | Fechas y utilidades |
 | `js/defaults.js` | Objetivos, catálogo y plantillas iniciales |
 | `js/storage.js` | **Única** puerta de acceso a los datos (IndexedDB). Para cambiar de sistema de almacenamiento solo se toca este archivo |
 | `sw.js` | Service worker: funcionamiento sin conexión y actualizaciones |

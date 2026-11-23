@@ -179,3 +179,38 @@ textarea {
 .scorepick .btn { color: var(--c); font-weight: 500; }
 .scorepick .btn.sel { background: var(--cb); border-color: var(--c); font-weight: 700; }
 .scorepick .btn:first-child { grid-column: 1 / -1; }
+
+/* ---------- Semana ---------- */
+.linkbtn.small { font-size: .85rem; padding: 0; }
+.counters { list-style: none; margin: 0; padding: 0; }
+.counter { display: flex; gap: 10px; align-items: center; padding: 7px 0; border-top: 1px solid var(--line); font-size: .95rem; }
+.counter:first-child { border-top: 0; }
+.counters.compact .counter { padding: 4px 0; font-size: .88rem; border-top: 0; }
+.counters.compact .dot { width: 22px; height: 22px; font-size: .7rem; }
+.wgrid { display: grid; gap: 6px; }
+.grid-row { display: grid; grid-template-columns: minmax(84px, 1.6fr) repeat(7, 1fr); align-items: center; justify-items: center; gap: 2px; }
+.glabel { justify-self: start; font-size: .78rem; color: var(--muted); line-height: 1.15; }
+.gday { background: none; border: 0; padding: 2px 0; font-size: .78rem; font-weight: 600; color: var(--muted); display: flex; flex-direction: column; align-items: center; min-width: 32px; min-height: 40px; justify-content: center; border-radius: 8px; }
+.gday small { font-weight: 400; font-size: .7rem; }
+.gday.today { color: var(--accent); background: var(--accent-soft); }
+.pt { display: inline-block; width: 18px; height: 18px; border-radius: 50%; border: 2px solid var(--accent); vertical-align: middle; }
+.pt.full { background: var(--accent); }
+.pt.half { background: linear-gradient(90deg, var(--accent) 50%, transparent 50%); }
+.pt.empty { border-color: var(--muted); opacity: .55; }
+.pt.future { border: 2px dotted var(--line); }
+.pt.q { width: auto; min-width: 26px; height: 22px; border: 0; border-radius: 11px; padding: 0 4px; font-size: .7rem; font-weight: 700; display: grid; place-items: center; color: var(--c); background: var(--cb); }
+.legend { font-size: .78rem; color: var(--muted); display: flex; flex-wrap: wrap; gap: 6px 8px; align-items: center; margin: 12px 0 4px; }
+.legend .pt { width: 14px; height: 14px; }
+
+/* ---------- Historial ---------- */
+.segmented { display: flex; background: var(--bar-bg); border-radius: 12px; padding: 3px; margin-bottom: 12px; }
+.seg { flex: 1; border: 0; background: none; min-height: 38px; border-radius: 9px; font-weight: 600; color: var(--muted); }
+.seg.active { background: var(--card); color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,.12); }
+.hday { display: block; width: 100%; text-align: left; }
+.hnote { margin: 8px 0 0; font-size: .85rem; color: var(--muted); font-style: italic; white-space: pre-wrap; }
+.chart { display: flex; align-items: flex-end; gap: 2px; height: 150px; padding-top: 4px; }
+.cbar { flex: 1; min-width: 0; height: 100%; background: none; border: 0; padding: 0; display: flex; flex-direction: column; align-items: center; gap: 3px; }
+.cval { font-size: .65rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.ctrack { flex: 1; width: 100%; max-width: 22px; display: flex; align-items: flex-end; border-bottom: 1px solid var(--line); }
+.cfill { display: block; width: 100%; background: var(--accent); border-radius: 4px 4px 0 0; min-height: 0; }
+.clab { font-size: .6rem; color: var(--muted); }
