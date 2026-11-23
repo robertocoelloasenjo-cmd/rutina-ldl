@@ -99,13 +99,40 @@ export async function loadAll() {
 
   const firstRun = schemaVersion == null;
   const data = migrate({ schemaVersion: schemaVersion || SCHEMA_VERSION, settings, foods, templates, days });
-  if (firstRun || schemaVersion !== SCHEMA_VERSION) {
+  const seeded = await getMeta('seededFoods');
+  const foodsChanged = addNewDefaultFoods(data, seeded);
+  if (firstRun || schemaVersion !== SCHEMA_VERSION || foodsChanged) {
     await setMeta('schemaVersion', SCHEMA_VERSION);
     await setMeta('settings', data.settings);
     await setMeta('foods', data.foods);
     await setMeta('templates', data.templates);
+    await setMeta('seededFoods', DEFAULT_FOODS.map((f) => f.id));
   }
   return data;
+}
+
+/**
+ * Cuando una versión nueva de la app trae alimentos nuevos en el catálogo inicial,
+ * se añaden a los guardados (solo una vez: si luego borras uno, no vuelve).
+ * También completa campos nuevos (p. ej. ldlScore) en alimentos que ya existían,
+ * sin tocar lo que ya tenga valor.
+ */
+function addNewDefaultFoods(data, seededIds) {
+  const seeded = new Set(seededIds || data.foods.map((f) => f.id));
+  const byId = new Map(data.foods.map((f) => [f.id, f]));
+  let changed = !seededIds;
+  for (const def of DEFAULT_FOODS) {
+    const cur = byId.get(def.id);
+    if (cur) {
+      for (const k of Object.keys(def)) {
+        if (cur[k] === undefined) { cur[k] = def[k]; changed = true; }
+      }
+    } else if (!seeded.has(def.id)) {
+      data.foods.push(structuredClone(def));
+      changed = true;
+    }
+  }
+  return changed;
 }
 
 export async function getDay(date) {

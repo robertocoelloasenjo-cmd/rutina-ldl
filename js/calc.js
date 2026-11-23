@@ -1,7 +1,7 @@
 // Cálculos: totales de un día, aporte de cada apunte y sugerencias.
 // Nada de esto se guarda; se recalcula siempre con los factores actuales.
 
-import { MEALS } from './defaults.js';
+import { MEALS, LDL_SCORES } from './defaults.js';
 
 export const nf = (n, dec = 1) => Number(n || 0).toLocaleString('es-ES', {
   minimumFractionDigits: 0, maximumFractionDigits: dec,
@@ -68,7 +68,7 @@ export function qtyText(food, qty) {
 
 export function pluralUnit(u, qty) {
   if (qty === 1) return u;
-  const map = { 'ración': 'raciones', unidad: 'unidades', botellita: 'botellitas', pieza: 'piezas', rebanada: 'rebanadas', cucharada: 'cucharadas' };
+  const map = { 'ración': 'raciones', unidad: 'unidades', botellita: 'botellitas', pieza: 'piezas', rebanada: 'rebanadas', cucharada: 'cucharadas', vaso: 'vasos', copa: 'copas', onza: 'onzas', bolsa: 'bolsas', medio: 'medios' };
   return map[u] || u;
 }
 
@@ -148,3 +148,49 @@ export const DAILY_INDICATORS = [
   { key: 'sterolsG', total: 'sterolsG', label: 'Esteroles vegetales', unit: 'g', dec: 1 },
   { key: 'fruitVegServings', total: 'fruitVeg', label: 'Fruta o verdura', unit: 'raciones', dec: 1 },
 ];
+
+// ---------- Calidad de las comidas (efecto sobre el LDL) ----------
+// Cada alimento apuntado suma su valoración (de -2 a +2) una vez, sea cual sea la cantidad.
+
+export function itemScore(item, food) {
+  if (!food) return 0;
+  const v = food.custom ? Number(item.score) : Number(food.ldlScore);
+  return Number.isFinite(v) ? Math.max(-2, Math.min(2, Math.round(v))) : 0;
+}
+export const itemName = (item, food) => (food && food.custom && item.name) ? item.name : (food ? food.name : 'Alimento borrado');
+export const scoreInfo = (v) => LDL_SCORES[String(Math.max(-2, Math.min(2, Math.round(Number(v) || 0))))];
+
+export function mealQuality(items, foodsById) {
+  let score = 0, pos = 0, neg = 0;
+  const negatives = [];
+  for (const it of items || []) {
+    const f = foodsById[it.foodId];
+    const s = itemScore(it, f);
+    score += s;
+    if (s > 0) pos++;
+    if (s < 0) { neg++; negatives.push(itemName(it, f)); }
+  }
+  let label, cls;
+  if (score >= 3) { label = 'Muy buena'; cls = 's2'; }
+  else if (score >= 1) { label = 'Buena'; cls = 's1'; }
+  else if (score === 0) { label = 'Neutra'; cls = 's0'; }
+  else if (score === -1) { label = 'Mejorable'; cls = 'sm1'; }
+  else { label = 'Poco saludable'; cls = 'sm2'; }
+  return { score, pos, neg, negatives, label, cls, count: (items || []).length };
+}
+
+export function dayQuality(day, foodsById) {
+  let score = 0, pos = 0, neg = 0, count = 0;
+  const negatives = [];
+  for (const m of MEALS) {
+    const q = mealQuality(day.meals[m.id], foodsById);
+    score += q.score; pos += q.pos; neg += q.neg; count += q.count;
+    negatives.push(...q.negatives);
+  }
+  let label, cls;
+  if (score >= 8) { label = 'Muy buena'; cls = 's2'; }
+  else if (score >= 4) { label = 'Buena'; cls = 's1'; }
+  else if (score >= 0) { label = 'Regular'; cls = 's0'; }
+  else { label = 'Mejorable'; cls = 'sm1'; }
+  return { score, pos, neg, negatives, label, cls, count };
+}

@@ -2,7 +2,7 @@
 
 App personal para el iPhone que registra lo que como en cada comida y calcula cómo voy frente a mis objetivos para bajar el LDL. La especificación completa está en [SPEC.md](SPEC.md).
 
-**Estado:** fase 1 (base) terminada: pantalla "Hoy" con panel del día, sugerencias, comidas, catálogo, plantillas, ejercicio y notas. Funciona sin conexión. Las pantallas Semana, Historial, copias de seguridad y Ajustes editables llegan en las fases siguientes.
+**Estado:** fase 1 (base) terminada: pantalla "Hoy" con panel del día, sugerencias, comidas, catálogo (unos 50 alimentos valorados según su efecto sobre el colesterol), calidad de cada comida y del día, plantillas, ejercicio y notas. Funciona sin conexión. Las pantallas Semana, Historial, copias de seguridad y Ajustes editables llegan en las fases siguientes.
 
 ## Instalar en el iPhone
 

@@ -1,8 +1,9 @@
 import * as storage from './storage.js';
-import { MEALS, CATEGORIES, emptyDay } from './defaults.js';
-import { dayTotals, itemContribution, contributionText, qtyText, suggestions, DAILY_INDICATORS, nf, pluralUnit } from './calc.js';
+import { MEALS, CATEGORIES, LDL_SCORES, emptyDay } from './defaults.js';
+import { dayTotals, itemContribution, contributionText, qtyText, suggestions, DAILY_INDICATORS, nf, pluralUnit,
+  itemScore, itemName, scoreInfo, mealQuality, dayQuality } from './calc.js';
 
-export const APP_VERSION = '0.1.0';
+export const APP_VERSION = '0.2.0';
 
 const view = document.getElementById('view');
 const sheet = document.getElementById('sheet');
@@ -83,6 +84,12 @@ function renderToday() {
   if (totals.cheese > 0) chips.push(`<span class="chip warn">Queso ×${nf(totals.cheese)}</span>`);
 
   const meals = MEALS.map((m) => renderMeal(m, day)).join('');
+  const dq = dayQuality(day, state.foodsById);
+  const quality = dq.count ? `
+      <div class="quality">
+        <div class="ind-top"><b>Calidad de las comidas</b><span class="badge ${dq.cls}">${dq.label} · ${dq.score > 0 ? '+' : ''}${dq.score}</span></div>
+        <p class="hint">${dq.pos} ${dq.pos === 1 ? 'alimento' : 'alimentos'} a favor del colesterol · ${dq.neg} en contra${dq.negatives.length ? ': ' + esc(dq.negatives.join(', ')) : ''}.</p>
+      </div>` : '';
 
   return `
     <header class="dayhead">
@@ -96,6 +103,7 @@ function renderToday() {
       <h2>Objetivos del día</h2>
       ${inds}
       ${chips.length ? `<div class="chips">${chips.join('')}</div>` : ''}
+      ${quality}
     </section>
 
     ${meals}
@@ -125,14 +133,16 @@ function renderMeal(m, day) {
     const f = state.foodsById[it.foodId];
     if (!f) return `<li><button class="item" data-action="edit-item" data-meal="${m.id}" data-id="${it.id}"><span class="name">Alimento borrado del catálogo</span></button></li>`;
     const c = contributionText(itemContribution(f, Number(it.qty) || 0));
+    const si = scoreInfo(itemScore(it, f));
     return `<li><button class="item" data-action="edit-item" data-meal="${m.id}" data-id="${it.id}">
-      <span><span class="name">${esc(f.name)}</span>${c ? `<span class="meta">${esc(c)}</span>` : ''}</span>
+      <span class="dot ${si.cls}" title="${si.label}">${si.short}</span>
+      <span class="grow"><span class="name">${esc(itemName(it, f))}</span>${c ? `<span class="meta">${esc(c)}</span>` : ''}</span>
       <span class="qty">${esc(qtyText(f, Number(it.qty) || 0))}</span></button></li>`;
   }).join('')}</ul>` : '<p class="empty">Nada apuntado.</p>';
 
   return `
     <section class="card">
-      <h2>${m.name}${items.length ? `<span class="sub">${items.length} ${items.length === 1 ? 'alimento' : 'alimentos'}</span>` : ''}</h2>
+      <h2>${m.name}${items.length ? (() => { const q = mealQuality(items, state.foodsById); return `<span class="badge ${q.cls}">${q.label}</span>`; })() : ''}</h2>
       ${list}
       <div class="row">
         <button class="btn primary grow" data-action="add" data-meal="${m.id}">+ Añadir</button>
@@ -170,10 +180,17 @@ function openCatalog(mealId) {
   const first = foods.filter((f) => (f.meals || []).includes(mealId));
   const rest = foods.filter((f) => !(f.meals || []).includes(mealId));
   const groups = {};
-  for (const f of rest) (groups[f.category] ||= []).push(f);
+  for (const cat of [...Object.keys(CATEGORIES), ...rest.map((f) => f.category)]) {
+    const fs = rest.filter((f) => f.category === cat);
+    if (fs.length && !groups[cat]) groups[cat] = fs;
+  }
 
-  const btn = (f) => `<button class="foodbtn" data-food="${f.id}" data-search="${esc(f.name.toLowerCase())}">${esc(f.name)}
-    <small>${esc(foodHint(f))}</small></button>`;
+  const btn = (f) => {
+    const si = f.custom ? null : scoreInfo(f.ldlScore);
+    return `<button class="foodbtn" data-food="${f.id}" data-search="${esc(f.name.toLowerCase())}">
+    ${si ? `<span class="dot ${si.cls}">${si.short}</span>` : '<span class="dot s0">✎</span>'}
+    <span class="grow">${esc(f.name)}<small>${esc(foodHint(f))}</small></span></button>`;
+  };
 
   sheet.innerHTML = `
     <div class="sheet-inner">
@@ -201,12 +218,19 @@ function openCatalog(mealId) {
 }
 
 function foodHint(f) {
+  if (f.custom) return f.ldlNote || '';
+  const base = foodHintNutrients(f);
+  const si = scoreInfo(f.ldlScore);
+  return `${si.label}${f.ldlNote ? ': ' + f.ldlNote : ''}${base ? ' · ' + base : ''}`;
+}
+
+function foodHintNutrients(f) {
   const contr = f.contributes || {};
   if (f.unit === 'g' && Number(contr.nutsPerG) === 1 && Object.keys(contr).length === 1) return 'Cuenta entero como frutos secos';
   const c = itemContribution(f, f.unit === 'g' ? 100 : 1);
   const per = f.unit === 'g' ? 'por 100 g' : `por ${f.unit}`;
   const t = contributionText(c);
-  return t ? `${t} ${per}` : 'Solo registro';
+  return t ? `${t} ${per}` : '';
 }
 
 function quickLabel(f, q) {
@@ -240,8 +264,14 @@ function openQty({ mealId, foodId, itemId }) {
         ${existing ? '<span></span>' : '<button class="linkbtn" data-back>‹ Catálogo</button>'}
         <button class="linkbtn" data-close>Cerrar</button></div>
       <div class="sheet-body">
-        <h3 style="margin:0 0 4px">${esc(f.name)}</h3>
-        <p class="hint" style="margin:0">${esc(foodHint(f))}${f.unit === 'g' && f.altUnit ? ` · 1 ${esc(f.altUnit.name)} ≈ ${nf(f.altUnit.grams, 1)} g` : ''}${f.unit !== 'g' && f.contributes && f.contributes.betaGlucanPerG ? ` · 1 ${esc(f.unit)} ≈ ${nf(f.gramsPerUnit, 1)} g` : ''}</p>
+        ${f.custom ? `
+        <label class="field">¿Qué has comido?
+          <input id="cname" type="text" autocomplete="off" placeholder="Por ejemplo: empanada de atún" value="${esc(existing && existing.name || '')}"></label>
+        <div class="field">¿Cómo es para el colesterol?</div>
+        <div class="scorepick">${[2, 1, 0, -1, -2].map((v) => `<button class="btn ${LDL_SCORES[v].cls}" data-score="${v}">${LDL_SCORES[v].label}</button>`).join('')}</div>
+        <p class="hint">Más favorable: fibra (avena, legumbre, fruta, verdura), frutos secos, aceite de oliva, pescado. Desfavorable: grasa saturada (embutido, queso, mantequilla, bollería, fritos, comida rápida).</p>
+        ` : `<h3 style="margin:0 0 4px">${esc(f.name)}</h3>`}
+        <p class="hint" style="margin:0" ${f.custom ? 'hidden' : ''}>${esc(foodHint(f))}${f.unit === 'g' && f.altUnit ? ` · 1 ${esc(f.altUnit.name)} ≈ ${nf(f.altUnit.grams, 1)} g` : ''}${f.unit !== 'g' && f.contributes && f.contributes.betaGlucanPerG ? ` · 1 ${esc(f.unit)} ≈ ${nf(f.gramsPerUnit, 1)} g` : ''}</p>
         <div class="quick">${(f.quick || []).map((q) => `<button class="btn" data-q="${q}">${esc(quickLabel(f, q))}</button>`).join('')}</div>
         <label class="qtyrow"><input id="qty" type="number" inputmode="decimal" min="0" step="any" value="${initial}"> <span>${esc(unitLabel)}</span></label>
         <p class="preview" id="preview"></p>
@@ -262,12 +292,18 @@ function openQty({ mealId, foodId, itemId }) {
   };
   input.oninput = refresh;
   refresh();
+  let score = existing && existing.score != null ? Number(existing.score) : null;
+  const cname = sheet.querySelector('#cname');
+  const markScore = () => sheet.querySelectorAll('[data-score]').forEach((b) => b.classList.toggle('sel', Number(b.dataset.score) === score));
+  markScore();
 
   sheet.onclick = async (e) => {
     if (e.target === sheet || e.target.closest('[data-close]')) return closeSheet();
     if (e.target.closest('[data-back]')) return openCatalog(mealId);
     const qb = e.target.closest('[data-q]');
     if (qb) { input.value = qb.dataset.q; refresh(); return; }
+    const sb = e.target.closest('[data-score]');
+    if (sb) { score = Number(sb.dataset.score); markScore(); return; }
     if (e.target.closest('[data-delete]')) {
       await updateDay((d) => { d.meals[mealId] = d.meals[mealId].filter((i) => i.id !== itemId); });
       closeSheet(); render(); return;
@@ -275,12 +311,19 @@ function openQty({ mealId, foodId, itemId }) {
     if (e.target.closest('[data-save]')) {
       const q = parseQty(input.value);
       if (!(q > 0)) { input.focus(); return; }
+      let extra = {};
+      if (f.custom) {
+        const name = cname.value.trim();
+        if (!name) { cname.focus(); return; }
+        if (score == null) { alert('Elige cómo es para el colesterol.'); return; }
+        extra = { name, score };
+      }
       await updateDay((d) => {
         if (existing) {
           const it = d.meals[mealId].find((i) => i.id === itemId);
-          if (it) it.qty = q;
+          if (it) Object.assign(it, { qty: q }, extra);
         } else {
-          d.meals[mealId].push({ id: uid(), foodId: f.id, qty: q });
+          d.meals[mealId].push({ id: uid(), foodId: f.id, qty: q, ...extra });
         }
       });
       closeSheet(); render();

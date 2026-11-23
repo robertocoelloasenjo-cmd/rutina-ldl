@@ -154,3 +154,28 @@ textarea {
 .qtyrow input { flex: 1; min-height: 48px; border-radius: 12px; border: 1px solid var(--line); background: var(--bg); padding: 8px 12px; font-size: 1.2rem; }
 .preview { margin-top: 10px; font-size: .9rem; color: var(--accent); min-height: 1.3em; }
 .placeholder { text-align: center; color: var(--muted); padding: 40px 20px; }
+
+/* ---------- Valoración para el colesterol ---------- */
+:root { --s2: #1f7a4d; --s2-bg: #d8f0e2; --s1: #3d8f63; --s1-bg: #e6f4ec; --s0: #6b736f; --s0-bg: #eceeed;
+        --sm1: #b86e00; --sm1-bg: #fdecd2; --sm2: #b3261e; --sm2-bg: #fbe0dd; }
+@media (prefers-color-scheme: dark) {
+  :root { --s2: #6fe0a6; --s2-bg: #183a28; --s1: #8fd3ad; --s1-bg: #1e3328; --s0: #aab3ae; --s0-bg: #2a302d;
+          --sm1: #f0b35a; --sm1-bg: #3d2c12; --sm2: #ff8f85; --sm2-bg: #44201c; }
+}
+.s2 { --c: var(--s2); --cb: var(--s2-bg); } .s1 { --c: var(--s1); --cb: var(--s1-bg); }
+.s0 { --c: var(--s0); --cb: var(--s0-bg); } .sm1 { --c: var(--sm1); --cb: var(--sm1-bg); }
+.sm2 { --c: var(--sm2); --cb: var(--sm2-bg); }
+.badge { font-size: .75rem; font-weight: 600; padding: 3px 9px; border-radius: 999px; color: var(--c); background: var(--cb); white-space: nowrap; }
+.dot { flex: none; width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center;
+       font-size: .8rem; font-weight: 700; color: var(--c); background: var(--cb); }
+.item { justify-content: flex-start; }
+.item .grow, .foodbtn .grow { flex: 1; min-width: 0; }
+.foodbtn { display: flex; gap: 10px; align-items: center; }
+.quality { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); }
+.field { display: block; font-weight: 600; margin: 8px 0 6px; }
+.field input { display: block; width: 100%; margin-top: 6px; min-height: 48px; border-radius: 12px; border: 1px solid var(--line);
+               background: var(--bg); padding: 8px 12px; font-size: 16px; font-weight: 400; }
+.scorepick { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px; }
+.scorepick .btn { color: var(--c); font-weight: 500; }
+.scorepick .btn.sel { background: var(--cb); border-color: var(--c); font-weight: 700; }
+.scorepick .btn:first-child { grid-column: 1 / -1; }

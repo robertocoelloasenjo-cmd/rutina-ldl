@@ -32,7 +32,7 @@ Arriba, el panel del día: barras de progreso con consumido, objetivo y pendient
 |---|---|---|
 | Beta-glucanos | 3 g | Suma de (gramos de cada alimento × factor de beta-glucanos) |
 | Frutos secos | 30 g | Suma de gramos de nueces, almendras y pistachos |
-| Esteroles vegetales | 2 g | Danacol × 1,6 g por botellita |
+| Esteroles vegetales | 1,6 g (un Danacol) | Danacol × 1,6 g por botellita |
 | Fruta o verdura | 5 raciones | Suma de raciones |
 
 Debajo de cada indicador con pendiente, una sugerencia concreta para completarlo: "Te faltan 1,7 g de beta-glucanos: unas 3 cucharadas de salvado (24 g) o 45 g de avena esta noche". Las equivalencias se calculan con los factores de la tabla de alimentos.
@@ -79,6 +79,16 @@ El panel de la semana también aparece resumido en "Hoy" (una línea por indicad
 - Catálogo de alimentos editable: nombre, unidad, gramos por unidad, factores nutricionales, categoría, comidas en las que aparece primero.
 - Plantillas ("Mi desayuno habitual", "Mi cena habitual").
 - Copias de seguridad (ver sección 5).
+
+### 3.5 Calidad de las comidas (añadido el 23-11-2026)
+
+- Cada alimento del catálogo lleva una valoración orientativa de su efecto sobre el LDL, de −2 a +2: muy favorable, favorable, neutro, desfavorable, muy desfavorable. También lleva una nota breve que explica el motivo (fibra soluble, grasa saturada, etc.). Es editable como el resto de factores.
+- Se muestra con un círculo de color junto a cada alimento, en el catálogo y en lo apuntado.
+- Cada comida tiene una etiqueta según la suma de valoraciones de lo apuntado, contando cada alimento una vez: ≥3 muy buena, 1-2 buena, 0 neutra, −1 mejorable, ≤−2 poco saludable.
+- Cómputo del día en el panel de "Hoy": suma de todas las comidas, con la etiqueta (≥8 muy buena, ≥4 buena, ≥0 regular, <0 mejorable), cuántos alimentos van a favor y en contra, y cuáles van en contra.
+- "Otro alimento (escribir)": para lo que no está en el catálogo. Se escribe el nombre y se elige la valoración.
+- Catálogo ampliado con pan, arroz y pasta, aceite de oliva, aguacate, huevo, soja, embutidos, mantequilla, nata y una categoría de comida rápida, bollería y caprichos.
+- Pendiente para las fases 2 y 3: mostrar la calidad en Semana e Historial.
 
 ## 4. Catálogo inicial de alimentos
 
