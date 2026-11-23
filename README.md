@@ -6,7 +6,7 @@ App personal para el iPhone que registra lo que como en cada comida y calcula c�
 
 ## Instalar en el iPhone
 
-1. Abre en **Safari** la dirección de la app: `https://<tu-usuario>.github.io/rutina-ldl/`
+1. Abre en **Safari** la dirección de la app: `https://robertocoelloasenjo-cmd.github.io/rutina-ldl/`
 2. Toca el botón **Compartir** (el cuadrado con la flecha hacia arriba).
 3. Elige **Añadir a pantalla de inicio** → **Añadir**.
 4. Abre la app desde el icono nuevo. Se abre a pantalla completa, sin la barra de Safari.
@@ -53,6 +53,6 @@ Llega en la fase 3: un botón **Exportar** en Ajustes que guarda un archivo `.js
 
 1. Crear el repositorio `rutina-ldl` en GitHub y subir estos archivos a la rama `main`.
 2. En el repositorio: **Settings → Pages → Build and deployment → Source: Deploy from a branch**, rama `main`, carpeta `/ (root)` → **Save**.
-3. En un par de minutos la app está en `https://<tu-usuario>.github.io/rutina-ldl/`.
+3. En un par de minutos la app está en `https://robertocoelloasenjo-cmd.github.io/rutina-ldl/`.
 
 Nota: en una cuenta gratuita de GitHub, Pages exige que el repositorio sea público. Lo público es solo el código; tus comidas nunca se suben.
