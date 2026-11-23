@@ -4,7 +4,7 @@
 // Así una versión nueva publicada en GitHub Pages llega sola en la siguiente apertura.
 // Cambia VERSION al añadir o renombrar archivos de la lista.
 
-const VERSION = 'v3';
+const VERSION = 'v4';
 const CACHE = `rutina-ldl-${VERSION}`;
 const FILES = [
   './',
@@ -14,7 +14,6 @@ const FILES = [
   'js/app.js',
   'js/storage.js',
   'js/defaults.js',
-  'js/calc.js',
   'js/util.js',
   'js/stats.js',
   'js/views.js',

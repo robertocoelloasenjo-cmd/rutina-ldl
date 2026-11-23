@@ -1,106 +1,97 @@
-// Estadísticas de día, semana y mes. Todo se calcula a partir de lo apuntado.
+// Estadísticas de día, semana y mes a partir de las casillas marcadas.
 //
-// Cumplimiento de un día: para cada objetivo diario (beta-glucanos, frutos secos,
-// esteroles, fruta/verdura) vale 1 si se cumple, 0,5 si se llega al 50 % y 0 si no.
-// El % del día es la media de los cuatro. El % de una semana o un mes es la media
-// de los días con algo apuntado.
+// Cumplimiento de un periodo: para cada casilla activa, días marcados ÷ días objetivo
+// (máximo 100 %), escalando el objetivo semanal a la duración del periodo.
+// El % del periodo es la media de todas las casillas.
 
-import { MEALS } from './defaults.js';
-import { dayTotals, dayQuality, DAILY_INDICATORS, nf } from './calc.js';
+import { activeChecks } from './defaults.js';
 import { todayKey, weekDays } from './util.js';
-
-const EPS = 1e-9;
 
 export function hasData(day) {
   if (!day) return false;
-  return MEALS.some((m) => (day.meals[m.id] || []).length > 0)
-    || Number(day.aerobicMin) > 0 || !!day.strength || !!(day.notes || '').trim();
+  return Object.values(day.checks || {}).some(Boolean)
+    || (day.exercise || []).length > 0 || !!(day.notes || '').trim();
 }
 
-export function daySummary(day, foodsById, goals) {
-  const totals = dayTotals(day, foodsById);
-  const ind = DAILY_INDICATORS.map((i) => {
-    const goal = Number(goals[i.key]) || 0;
-    const value = totals[i.total];
-    const ratio = goal > 0 ? value / goal : 1;
-    const level = ratio >= 1 - EPS ? 2 : ratio >= 0.5 - EPS ? 1 : 0; // 2 lleno, 1 medio, 0 vacío
-    return { key: i.key, label: i.label, value, goal, level };
+export const isStrength = (e) => e.type === 'Fuerza';
+export function dayExercise(day) {
+  const ex = (day && day.exercise) || [];
+  return {
+    aerobicMin: ex.filter((e) => !isStrength(e)).reduce((a, e) => a + (Number(e.min) || 0), 0),
+    strength: ex.some(isStrength),
+    totalMin: ex.reduce((a, e) => a + (Number(e.min) || 0), 0),
+  };
+}
+
+/** Resumen de un conjunto de días. nDays = duración del periodo (para escalar objetivos). */
+export function periodSummary(keys, data, nDays = Math.max(1, keys.filter((k) => k <= todayKey()).length)) {
+  const checks = activeChecks(data.settings);
+  const days = keys.map((k) => data.days[k]).filter(hasData);
+  const per = checks.map((c) => {
+    const count = days.filter((d) => d.checks && d.checks[c.id]).length;
+    const target = Math.max(1, Math.round((c.target * nDays) / 7));
+    return { ...c, count, periodTarget: target, ratio: Math.min(1, count / target) };
   });
-  const pct = Math.round((ind.reduce((s, i) => s + i.level / 2, 0) / ind.length) * 100);
+  let aerobicMin = 0, strengthDays = 0;
+  for (const d of days) { const e = dayExercise(d); aerobicMin += e.aerobicMin; if (e.strength) strengthDays++; }
   return {
-    totals, ind, pct,
-    quality: dayQuality(day, foodsById),
-    aerobicMin: Number(day.aerobicMin) || 0,
-    strength: !!day.strength,
-    legumeDay: totals.legume >= 0.5 - EPS,
+    daysWithData: days.length,
+    pct: days.length ? Math.round((per.reduce((a, c) => a + c.ratio, 0) / (per.length || 1)) * 100) : null,
+    checks: per,
+    aerobicMin,
+    strengthDays,
   };
 }
 
-const average = (arr) => (arr.length ? Math.round(arr.reduce((a, b) => a + b, 0) / arr.length) : null);
-
-/** Resumen de un conjunto de días (semana o mes). */
-export function periodSummary(keys, data, foodsById) {
-  const goals = data.settings.goals;
-  const list = keys.filter((k) => hasData(data.days[k])).map((k) => ({ key: k, s: daySummary(data.days[k], foodsById, goals) }));
-  const sum = (f) => list.reduce((a, d) => a + f(d.s), 0);
-  return {
-    daysWithData: list.length,
-    pct: average(list.map((d) => d.s.pct)),
-    legumeDays: sum((s) => (s.legumeDay ? 1 : 0)),
-    oilyFish: sum((s) => s.totals.oilyFish),
-    redMeat: sum((s) => s.totals.redMeat),
-    cheese: sum((s) => s.totals.cheese),
-    aerobicMin: sum((s) => s.aerobicMin),
-    strengthDays: sum((s) => (s.strength ? 1 : 0)),
-    qualityScore: sum((s) => s.quality.score),
-    days: list,
-  };
-}
-
-/** Semana completa (lunes a domingo) con contadores, estados y rejilla diaria. */
-export function weekStats(start, data, foodsById, today = todayKey()) {
+/** Semana completa (lunes a domingo) con contadores, estados y rejilla. */
+export function weekStats(start, data, today = todayKey()) {
   const goals = data.settings.goals;
   const keys = weekDays(start);
-  const p = periodSummary(keys, data, foodsById);
-  const byKey = Object.fromEntries(p.days.map((d) => [d.key, d.s]));
-
-  const daysLeft = keys.filter((k) => k > today).length;          // días después de hoy
-  const todayInWeek = keys.includes(today);
-  const todayS = byKey[today];
-  // Huecos que aún pueden contar para objetivos "por día": los días que quedan, y hoy si aún no cuenta.
-  const slots = (countsToday) => daysLeft + (todayInWeek && !countsToday ? 1 : 0);
+  const p = periodSummary(keys, data);
+  const daysLeft = keys.filter((k) => k > today).length;
   const closed = keys[6] < today;
+  const todayInWeek = keys.includes(today);
   const leftTxt = closed ? '' : daysLeft === 0 ? ' · último día' : ` · ${daysLeft === 1 ? 'queda 1 día' : `quedan ${daysLeft} días`}`;
 
-  const minCounter = (label, value, goal, unit, unitOne, perDayCountsToday, closeFactor = 1) => {
-    const fmt = (n) => nf(n, 0);
+  const counter = (label, value, goal, unit, unitOne, slots, fmt = (n) => String(n), nearBy = 1) => {
     const u = goal === 1 ? unitOne : unit;
-    if (value >= goal - EPS) return { label, status: 'ok', text: `${label}: ${fmt(value)} de ${fmt(goal)} ${u} ✓` };
-    const reachable = perDayCountsToday === null ? !closed : value + slots(perDayCountsToday) >= goal - EPS;
-    if (!reachable) return { label, status: 'imposible', text: `${label}: ${fmt(value)} de ${fmt(goal)} ${u} · ${closed ? 'no se llegó' : 'ya no se llega esta semana'}` };
-    const near = goal - value <= closeFactor + EPS;
-    return { label, status: near ? 'casi' : 'falta', text: `${label}: ${fmt(value)} de ${fmt(goal)} ${u}${leftTxt}` };
+    if (value >= goal) return { label, status: 'ok', text: `${label}: ${fmt(value)} de ${fmt(goal)} ${u} ✓` };
+    if (slots !== null && value + slots < goal) {
+      return { label, status: 'imposible', text: `${label}: ${fmt(value)} de ${fmt(goal)} ${u} · ${closed ? 'no se llegó' : 'ya no se llega esta semana'}` };
+    }
+    if (closed) return { label, status: 'imposible', text: `${label}: ${fmt(value)} de ${fmt(goal)} ${u} · no se llegó` };
+    return { label, status: goal - value <= nearBy ? 'casi' : 'falta', text: `${label}: ${fmt(value)} de ${fmt(goal)} ${u}${leftTxt}` };
   };
-  const maxCounter = (label, value, max) => {
-    if (value > max + EPS) return { label, status: 'over', text: `${label}: ${nf(value, 0)} · superado el máximo de ${nf(max, 0)}` };
-    if (value >= max - EPS && max > 0) return { label, status: 'casi', text: `${label}: ${nf(value, 0)} de máx. ${nf(max, 0)} · al límite` };
-    return { label, status: 'ok', text: `${label}: ${nf(value, 0)} de máx. ${nf(max, 0)}` };
-  };
+  const todayDay = data.days[today];
+  const slotsFor = (markedToday) => daysLeft + (todayInWeek && !markedToday ? 1 : 0);
 
-  const counters = [
-    minCounter('Legumbre', p.legumeDays, Number(goals.legumeDaysMin), 'días', 'día', !!(todayS && todayS.legumeDay)),
-    minCounter('Pescado azul', p.oilyFish, Number(goals.oilyFishMin), 'veces', 'vez', false),
-    maxCounter('Carne roja', p.redMeat, Number(goals.redMeatMax)),
-    maxCounter('Queso', p.cheese, Number(goals.cheeseMax)),
-    minCounter('Ejercicio aeróbico', p.aerobicMin, Number(goals.aerobicMin), 'min', 'min', null, Number(goals.aerobicMin) / 3),
-    minCounter('Fuerza', p.strengthDays, Number(goals.strengthMin), 'sesiones', 'sesión', !!(todayS && todayS.strength)),
-  ];
+  // Las dos casillas de avena se muestran juntas en los contadores.
+  const counters = [];
+  const seen = new Set();
+  for (const c of p.checks) {
+    if (c.group && seen.has(c.group)) continue;
+    if (c.group) {
+      seen.add(c.group);
+      const g = p.checks.filter((x) => x.group === c.group);
+      const value = g.reduce((a, x) => a + x.count, 0);
+      const goal = g.reduce((a, x) => a + x.target, 0);
+      const marked = g.filter((x) => todayDay && todayDay.checks && todayDay.checks[x.id]).length;
+      const slots = daysLeft * g.length + (todayInWeek ? g.length - marked : 0);
+      counters.push(counter(g.length > 1 ? 'Avena' : c.label, value, goal, 'tomas', 'toma', slots));
+    } else {
+      const marked = !!(todayDay && todayDay.checks && todayDay.checks[c.id]);
+      counters.push(counter(c.label, c.count, c.target, 'días', 'día', slotsFor(marked)));
+    }
+  }
+  counters.push(counter('Ejercicio aeróbico', p.aerobicMin, Number(goals.aerobicMin) || 0, 'min', 'min', null, String, (Number(goals.aerobicMin) || 0) / 3));
+  const strengthToday = !!(todayDay && dayExercise(todayDay).strength);
+  counters.push(counter('Fuerza', p.strengthDays, Number(goals.strengthMin) || 0, 'sesiones', 'sesión', slotsFor(strengthToday)));
 
-  const grid = DAILY_INDICATORS.map((i, idx) => ({
-    label: i.label,
-    cells: keys.map((k) => ({ key: k, future: k > today, level: byKey[k] ? byKey[k].ind[idx].level : (k > today ? null : 0) })),
+  const grid = p.checks.map((c) => ({
+    label: c.label,
+    cells: keys.map((k) => ({ key: k, future: k > today, done: !!(data.days[k] && data.days[k].checks && data.days[k].checks[c.id]) })),
   }));
-  const quality = keys.map((k) => ({ key: k, future: k > today, q: byKey[k] ? byKey[k].quality : null }));
+  const exRow = keys.map((k) => ({ key: k, future: k > today, ...dayExercise(data.days[k]) }));
 
-  return { start, keys, counters, grid, quality, pct: p.pct, daysWithData: p.daysWithData, period: p };
+  return { start, keys, counters, grid, exRow, pct: p.pct, daysWithData: p.daysWithData, period: p };
 }

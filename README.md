@@ -2,7 +2,7 @@
 
 App personal para el iPhone que registra lo que como en cada comida y calcula cómo voy frente a mis objetivos para bajar el LDL. La especificación completa está en [SPEC.md](SPEC.md).
 
-**Estado:** fase 1 (base) terminada: pantalla "Hoy" con panel del día, sugerencias, comidas, catálogo (unos 50 alimentos valorados según su efecto sobre el colesterol), calidad de cada comida y del día, plantillas, ejercicio y notas. Funciona sin conexión. Fase 2 terminada: pantalla **Semana** (contadores semanales con estado, rejilla de cumplimiento diario, calidad por día) con resumen en "Hoy", e **Historial** por días, semanas (con gráfico de las últimas 12) y meses. Faltan copias de seguridad (fase 3) y Ajustes editables (fase 4).
+**Estado:** versión simplificada. Cada día marcas casillas de lo que has tomado de los alimentos más beneficiosos para el LDL (avena en desayuno y cena, frutos secos, legumbre, Danacol, aceite de oliva; pescado azul opcional en Ajustes), apuntas el ejercicio (tipo y minutos) y una nota libre. Pantalla **Semana** con contadores y rejilla, e **Historial** por días, semanas y meses. Funciona sin conexión. Faltan copias de seguridad (fase 3). Los datos de la versión anterior (con comidas y alimentos) se convirtieron solos en casillas.
 
 ## Instalar en el iPhone
 
@@ -39,11 +39,10 @@ Llega en la fase 3: un botón **Exportar** en Ajustes que guarda un archivo `.js
 | `index.html` | Página única de la app |
 | `css/styles.css` | Estilos (modo claro y oscuro automáticos, zonas seguras del iPhone) |
 | `js/app.js` | Pantallas y botones |
-| `js/calc.js` | Cálculo de totales, sugerencias y calidad de las comidas (nada se guarda, todo se recalcula) |
 | `js/stats.js` | Resúmenes de día, semana y mes |
 | `js/views.js` | Pantallas Semana e Historial |
 | `js/util.js` | Fechas y utilidades |
-| `js/defaults.js` | Objetivos, catálogo y plantillas iniciales |
+| `js/defaults.js` | Casillas, tipos de ejercicio y objetivos semanales |
 | `js/storage.js` | **Única** puerta de acceso a los datos (IndexedDB). Para cambiar de sistema de almacenamiento solo se toca este archivo |
 | `sw.js` | Service worker: funcionamiento sin conexión y actualizaciones |
 | `manifest.webmanifest`, `icons/` | Instalación como app |

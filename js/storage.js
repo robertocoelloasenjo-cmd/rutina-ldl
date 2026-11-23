@@ -3,7 +3,7 @@
 // (por ejemplo, sincronizar con un repositorio privado) basta con reescribir este módulo
 // manteniendo las mismas funciones.
 
-import { SCHEMA_VERSION, DEFAULT_FOODS, DEFAULT_TEMPLATES, defaultSettings, emptyDay } from './defaults.js';
+import { SCHEMA_VERSION, defaultSettings, emptyDay } from './defaults.js';
 
 const DB_NAME = 'rutina-ldl';
 const DB_VERSION = 1;
@@ -52,41 +52,72 @@ async function setMeta(key, value) {
 }
 
 // ---------- Migraciones ----------
-// Recibe un objeto completo { schemaVersion, settings, foods, templates, days }
-// y lo devuelve en la versión actual. Añadir aquí un paso por cada cambio de modelo.
+// Recibe un objeto completo { schemaVersion, settings, days, foods? } y lo devuelve en la versión actual.
 export function migrate(data) {
   const d = { ...data };
   let v = Number(d.schemaVersion || 1);
   if (v > SCHEMA_VERSION) {
     throw new Error(`El archivo es de una versión más nueva de la app (${v}). Actualiza la app primero.`);
   }
-  // Ejemplo para el futuro:
-  // if (v === 1) { ...transformar...; v = 2; }
+  d.days = d.days && typeof d.days === 'object' ? { ...d.days } : {};
+  if (v === 1) {
+    // De comidas con alimentos y cantidades a casillas.
+    const foods = Object.fromEntries((Array.isArray(d.foods) ? d.foods : []).map((f) => [f.id, f]));
+    for (const k of Object.keys(d.days)) d.days[k] = dayFromV1(d.days[k], foods);
+    const old = (d.settings && d.settings.goals) || {};
+    d.settings = { lastBackupAt: (d.settings && d.settings.lastBackupAt) || null,
+      goals: { aerobicMin: old.aerobicMin, strengthMin: old.strengthMin } };
+    v = 2;
+  }
+  delete d.foods; delete d.templates;
   d.schemaVersion = v;
-  d.settings = { ...defaultSettings(), ...(d.settings || {}) };
-  d.settings.goals = { ...defaultSettings().goals, ...(d.settings.goals || {}) };
-  d.foods = Array.isArray(d.foods) ? d.foods : DEFAULT_FOODS;
-  d.templates = Array.isArray(d.templates) ? d.templates : DEFAULT_TEMPLATES;
-  d.days = d.days && typeof d.days === 'object' ? d.days : {};
+  const def = defaultSettings();
+  const s = d.settings || {};
+  d.settings = { ...def, ...s,
+    goals: { ...def.goals, ...Object.fromEntries(Object.entries(s.goals || {}).filter(([, x]) => x != null)) },
+    checks: { ...def.checks, ...(s.checks || {}) } };
   for (const k of Object.keys(d.days)) d.days[k] = normalizeDay(d.days[k]);
   return d;
+}
+
+function dayFromV1(day, foods) {
+  const meals = (day && day.meals) || {};
+  const has = (mealIds, test) => mealIds.some((m) => (meals[m] || []).some((it) => {
+    const f = foods[it.foodId] || {};
+    const c = f.contributes || {};
+    return test(it.foodId || '', c);
+  }));
+  const ALL = ['desayuno', 'comida', 'merienda', 'cena'];
+  const avena = (id, c) => c.betaGlucanPerG > 0 || /avena/.test(id);
+  const checks = {};
+  if (has(['desayuno'], avena)) checks.avenaDesayuno = true;
+  if (has(['cena', 'merienda', 'comida'], avena)) checks.avenaCena = true;
+  if (has(ALL, (id, c) => c.nutsPerG > 0 || /nuez|nueces|almendra|pistacho|avellana/.test(id))) checks.frutosSecos = true;
+  if (has(ALL, (id, c) => c.legumePerUnit > 0)) checks.legumbre = true;
+  if (has(ALL, (id, c) => c.sterolsPerUnit > 0 || /danacol/.test(id))) checks.danacol = true;
+  if (has(ALL, (id) => /aceite-oliva|aove/.test(id))) checks.aceite = true;
+  if (has(ALL, (id, c) => c.oilyFishPerUnit > 0)) checks.pescado = true;
+  const exercise = [];
+  if (Number(day && day.aerobicMin) > 0) exercise.push({ id: 'm1', type: 'Otro', min: Number(day.aerobicMin) });
+  if (day && day.strength) exercise.push({ id: 'm2', type: 'Fuerza', min: 0 });
+  return { checks, exercise, notes: (day && day.notes) || '', updatedAt: (day && day.updatedAt) || null, legacyMeals: meals };
 }
 
 function normalizeDay(day) {
   const base = emptyDay();
   const out = { ...base, ...(day || {}) };
-  out.meals = { ...base.meals, ...((day && day.meals) || {}) };
+  out.checks = { ...((day && day.checks) || {}) };
+  out.exercise = Array.isArray(day && day.exercise) ? day.exercise : [];
   return out;
 }
 
 // ---------- API pública ----------
 
-/** Carga todo. Si es el primer arranque, guarda los valores iniciales. */
+/** Carga todo. Si es el primer arranque o hay que migrar, guarda el resultado. */
 export async function loadAll() {
-  let schemaVersion = await getMeta('schemaVersion');
-  let settings = await getMeta('settings');
-  let foods = await getMeta('foods');
-  let templates = await getMeta('templates');
+  const schemaVersion = await getMeta('schemaVersion');
+  const settings = await getMeta('settings');
+  const foods = await getMeta('foods');
   const days = {};
   await tx([DAYS], 'readonly', (t) => new Promise((resolve, reject) => {
     const req = t.objectStore(DAYS).openCursor();
@@ -98,41 +129,17 @@ export async function loadAll() {
   }));
 
   const firstRun = schemaVersion == null;
-  const data = migrate({ schemaVersion: schemaVersion || SCHEMA_VERSION, settings, foods, templates, days });
-  const seeded = await getMeta('seededFoods');
-  const foodsChanged = addNewDefaultFoods(data, seeded);
-  if (firstRun || schemaVersion !== SCHEMA_VERSION || foodsChanged) {
-    await setMeta('schemaVersion', SCHEMA_VERSION);
-    await setMeta('settings', data.settings);
-    await setMeta('foods', data.foods);
-    await setMeta('templates', data.templates);
-    await setMeta('seededFoods', DEFAULT_FOODS.map((f) => f.id));
+  const data = migrate({ schemaVersion: schemaVersion || SCHEMA_VERSION, settings, foods, days });
+  if (firstRun || schemaVersion !== SCHEMA_VERSION) {
+    await tx([DAYS, META], 'readwrite', (t) => {
+      const ds = t.objectStore(DAYS);
+      for (const [k, v] of Object.entries(data.days)) ds.put(v, k);
+      const m = t.objectStore(META);
+      m.put(SCHEMA_VERSION, 'schemaVersion');
+      m.put(data.settings, 'settings');
+    });
   }
   return data;
-}
-
-/**
- * Cuando una versión nueva de la app trae alimentos nuevos en el catálogo inicial,
- * se añaden a los guardados (solo una vez: si luego borras uno, no vuelve).
- * También completa campos nuevos (p. ej. ldlScore) en alimentos que ya existían,
- * sin tocar lo que ya tenga valor.
- */
-function addNewDefaultFoods(data, seededIds) {
-  const seeded = new Set(seededIds || data.foods.map((f) => f.id));
-  const byId = new Map(data.foods.map((f) => [f.id, f]));
-  let changed = !seededIds;
-  for (const def of DEFAULT_FOODS) {
-    const cur = byId.get(def.id);
-    if (cur) {
-      for (const k of Object.keys(def)) {
-        if (cur[k] === undefined) { cur[k] = def[k]; changed = true; }
-      }
-    } else if (!seeded.has(def.id)) {
-      data.foods.push(structuredClone(def));
-      changed = true;
-    }
-  }
-  return changed;
 }
 
 export async function getDay(date) {
@@ -152,10 +159,6 @@ export async function deleteDay(date) {
 
 export async function getSettings() { return (await getMeta('settings')) || defaultSettings(); }
 export async function saveSettings(settings) { await setMeta('settings', settings); }
-export async function getFoods() { return (await getMeta('foods')) || DEFAULT_FOODS; }
-export async function saveFoods(foods) { await setMeta('foods', foods); }
-export async function getTemplates() { return (await getMeta('templates')) || DEFAULT_TEMPLATES; }
-export async function saveTemplates(templates) { await setMeta('templates', templates); }
 
 /** Devuelve un objeto listo para guardar como JSON. */
 export async function exportAll() {
@@ -165,8 +168,6 @@ export async function exportAll() {
     exportedAt: new Date().toISOString(),
     schemaVersion: SCHEMA_VERSION,
     settings: data.settings,
-    foods: data.foods,
-    templates: data.templates,
     days: data.days,
   };
 }
@@ -174,7 +175,7 @@ export async function exportAll() {
 /**
  * Importa un objeto exportado.
  * mode 'merge': los días del archivo pisan los mismos días locales; el resto se conserva.
- *               Ajustes, catálogo y plantillas se toman del archivo.
+ *               Los ajustes se toman del archivo.
  * mode 'replace': borra todo lo local y deja solo lo del archivo.
  */
 export async function importAll(raw, mode = 'merge') {
@@ -186,8 +187,6 @@ export async function importAll(raw, mode = 'merge') {
     for (const [date, day] of Object.entries(data.days)) daysStore.put(day, date);
     meta.put(SCHEMA_VERSION, 'schemaVersion');
     meta.put(data.settings, 'settings');
-    meta.put(data.foods, 'foods');
-    meta.put(data.templates, 'templates');
   });
 }
 

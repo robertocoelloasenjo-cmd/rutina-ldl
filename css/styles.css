@@ -214,3 +214,16 @@ textarea {
 .ctrack { flex: 1; width: 100%; max-width: 22px; display: flex; align-items: flex-end; border-bottom: 1px solid var(--line); }
 .cfill { display: block; width: 100%; background: var(--accent); border-radius: 4px 4px 0 0; min-height: 0; }
 .clab { font-size: .6rem; color: var(--muted); }
+
+/* ---------- Casillas ---------- */
+.ticks { display: grid; gap: 8px; }
+.tick { display: flex; align-items: center; gap: 12px; text-align: left; width: 100%; min-height: 56px;
+  padding: 10px 12px; border-radius: 12px; border: 1px solid var(--line); background: var(--card); }
+.tick b { display: block; font-weight: 600; }
+.tick small { display: block; color: var(--muted); font-size: .8rem; }
+.tick .box { flex: none; width: 30px; height: 30px; border-radius: 8px; border: 2px solid var(--muted);
+  display: grid; place-items: center; font-weight: 700; color: #fff; }
+.tick.on { background: var(--accent-soft); border-color: var(--accent); }
+.tick.on .box { background: var(--accent); border-color: var(--accent); }
+.check .grow { flex: 1; }
+.tick .grow { flex: 1; min-width: 0; }
