@@ -24,7 +24,7 @@ export const MEALS = [
 export const DEFAULT_GOALS = {
   betaGlucanG: 3,
   nutsG: 30,
-  sterolsG: 2,
+  sterolsG: 1.6,
   fruitVegServings: 5,
   legumeDaysMin: 3,
   oilyFishMin: 2,
