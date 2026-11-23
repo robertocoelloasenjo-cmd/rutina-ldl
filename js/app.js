@@ -4,7 +4,7 @@ import { todayKey, addDays, dayLabel, longDate, esc, uid, weekStart } from './ut
 import { renderWeek, renderWeekSummary, renderHistory } from './views.js';
 import { checkStreak, hasData } from './stats.js';
 
-export const APP_VERSION = '0.5.0';
+export const APP_VERSION = '0.5.1';
 
 const view = document.getElementById('view');
 const sheet = document.getElementById('sheet');

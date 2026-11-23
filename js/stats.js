@@ -53,7 +53,8 @@ export function weekStats(start, data, today = todayKey()) {
   const todayInWeek = keys.includes(today);
   const leftTxt = closed ? '' : daysLeft === 0 ? ' · último día' : ` · ${daysLeft === 1 ? 'queda 1 día' : `quedan ${daysLeft} días`}`;
 
-  const counter = (label, value, goal, unit, unitOne, slots, fmt = (n) => String(n), nearBy = 1) => {
+  const counter = (label, value, goal, unit, unitOne, ...rest) => ({ ...counter0(label, value, goal, unit, unitOne, ...rest), value, goal, unit: goal === 1 ? unitOne : unit });
+  const counter0 = (label, value, goal, unit, unitOne, slots, fmt = (n) => String(n), nearBy = 1) => {
     const u = goal === 1 ? unitOne : unit;
     if (value >= goal) return { label, status: 'ok', text: `${label}: ${fmt(value)} de ${fmt(goal)} ${u} ✓` };
     if (slots !== null && value + slots < goal) {

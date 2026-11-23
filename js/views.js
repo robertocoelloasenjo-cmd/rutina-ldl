@@ -17,12 +17,25 @@ function counterRow(c) {
   return `<li class="counter"><span class="dot ${st.cls}" title="${st.label}">${st.icon}</span><span>${esc(c.text)}</span></li>`;
 }
 
+function barRow(c) {
+  const pct = c.goal > 0 ? Math.min(100, (c.value / c.goal) * 100) : 0;
+  const cls = c.status === 'ok' ? '' : c.status === 'imposible' ? 'bad' : 'part';
+  return `<div class="wbar">
+      <div class="ind-top"><b>${esc(c.label)}</b><span class="val">${c.value} / ${c.goal} ${esc(c.unit)}${c.status === 'ok' ? ' ✓' : ''}</span></div>
+      <div class="bar ${cls}" role="progressbar" aria-valuenow="${c.value}" aria-valuemax="${c.goal}" aria-label="${esc(c.label)}"><span style="width:${pct.toFixed(1)}%"></span></div>
+    </div>`;
+}
+
 export function renderWeekSummary(state) {
   const ws = weekStats(weekStart(state.date), state.data);
+  const today = todayKey();
+  const left = ws.keys.filter((k) => k > today).length;
+  const sub = ws.keys[6] < today ? 'semana cerrada' : left === 0 ? 'último día' : left === 1 ? 'queda 1 día' : `quedan ${left} días`;
   return `
     <section class="card">
-      <h2>Esta semana <button class="linkbtn small" data-action="open-week">Ver semana ›</button></h2>
-      <ul class="counters compact">${ws.counters.map(counterRow).join('')}</ul>
+      <h2>Esta semana <span class="sub">${sub}</span></h2>
+      ${ws.counters.map(barRow).join('')}
+      <p style="margin:8px 0 0"><button class="linkbtn" data-action="open-week">Ver semana ›</button></p>
       ${goodWeeksLine(state)}
     </section>`;
 }

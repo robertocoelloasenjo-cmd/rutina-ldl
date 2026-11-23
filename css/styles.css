@@ -231,3 +231,6 @@ textarea {
 .streakline { margin: 8px 0 0; font-size: .88rem; font-weight: 600; color: var(--warn); }
 .warncard { background: var(--warn-soft); border-color: var(--warn); }
 .ticks + .row { margin-top: 10px; }
+.wbar { margin-bottom: 10px; }
+.wbar .bar { height: 8px; margin: 4px 0 0; }
+.bar.bad > span { background: var(--bad); }
