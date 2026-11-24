@@ -1,10 +1,10 @@
 import * as storage from './storage.js';
-import { CHECKS, EXERCISE_TYPES, activeChecks, emptyDay } from './defaults.js';
-import { todayKey, addDays, dayLabel, longDate, esc, uid, weekStart } from './util.js';
+import { CHECKS, COUNTERS, FOODS, MAX_COUNT, EXERCISE_TYPES, foodTotals, activeChecks, emptyDay } from './defaults.js';
+import { todayKey, addDays, dayLabel, longDate, esc, num, uid, weekStart } from './util.js';
 import { renderWeek, renderWeekSummary, renderHistory } from './views.js';
 import { checkStreak, hasData } from './stats.js';
 
-export const APP_VERSION = '0.5.1';
+export const APP_VERSION = '0.6.0';
 
 const view = document.getElementById('view');
 const sheet = document.getElementById('sheet');
@@ -19,10 +19,16 @@ const state = {
 function currentDay() {
   return state.data.days[state.date] || emptyDay();
 }
-async function updateDay(mutator, date = state.date) {
-  const day = structuredClone(state.data.days[date] || emptyDay());
-  mutator(day);
-  state.data.days[date] = await storage.saveDay(date, day);
+// Los cambios se aplican de uno en uno: así dos toques muy seguidos no se pisan.
+let saveQueue = Promise.resolve();
+function updateDay(mutator, date = state.date) {
+  const run = saveQueue.then(async () => {
+    const day = structuredClone(state.data.days[date] || emptyDay());
+    mutator(day);
+    state.data.days[date] = await storage.saveDay(date, day);
+  });
+  saveQueue = run.catch(() => {});
+  return run;
 }
 
 // ---------- Render principal ----------
@@ -46,6 +52,26 @@ function renderToday() {
       <span class="grow"><b>${esc(c.label)}</b><small>${esc(c.hint)}</small></span>
       ${st >= 2 ? `<span class="streak" title="Días seguidos">🔥 ${st}</span>` : ''}
     </button>`; }).join('');
+  const counters = COUNTERS.map((c) => {
+    const f = FOODS[c.food];
+    const n = (day.counts || {})[c.id] || 0;
+    const t = foodTotals(f, n || 1);
+    const approx = f.gramsEstimated ? '≈ ' : '';
+    const sub = `${n ? `${n} ${n === 1 ? f.unit : f.unit + 's'}` : `Por ${f.unit}`}: ${approx}${num(t.beta)} g beta-glucanos · ${num(t.kcal, 0)} kcal · ${num(t.sat, 1)} g sat.`;
+    return `
+    <div class="tick count ${n ? 'on' : ''}">
+      <button class="tickmain" data-action="count-toggle" data-id="${c.id}" aria-pressed="${!!n}">
+        <span class="box">${n ? '✓' : ''}</span>
+        <span class="grow"><b>${esc(f.name)}</b><small>${esc(f.note)}</small></span>
+      </button>
+      <div class="stepper">
+        <button class="iconbtn" data-action="count" data-id="${c.id}" data-d="-1" aria-label="Quitar una ${esc(f.name)}" ${n ? '' : 'disabled'}>−</button>
+        <output class="cnum" aria-label="Nº de galletas">${n}</output>
+        <button class="iconbtn" data-action="count" data-id="${c.id}" data-d="1" aria-label="Añadir una ${esc(f.name)}" ${n >= MAX_COUNT ? 'disabled' : ''}>+</button>
+      </div>
+      <small class="csub">${sub}</small>
+    </div>`;
+  }).join('');
   const usual = (state.data.settings.usual || []).filter((id) => checks.some((c) => c.id === id));
   const usualPending = usual.some((id) => !day.checks[id]);
 
@@ -68,6 +94,11 @@ function renderToday() {
       <h2>¿Qué he tomado? <span class="sub">${done} de ${checks.length}</span></h2>
       <div class="ticks">${boxes}</div>
       ${usual.length && usualPending ? '<div class="row"><button class="btn soft grow" data-action="usual">✓ Lo de siempre</button></div>' : ''}
+    </section>
+
+    <section class="card" aria-label="Galletas del día">
+      <h2>Galletas <span class="sub">solo registro</span></h2>
+      <div class="ticks">${counters}</div>
     </section>
 
     <section class="card">
@@ -194,6 +225,11 @@ function renderSettings() {
       ${rows}
     </section>
     <section class="card">
+      <h2>Datos de los alimentos</h2>
+      ${Object.values(FOODS).map(foodInfo).join('')}
+      <p class="hint">Los valores estimados son aproximados: la etiqueta no los declara.</p>
+    </section>
+    <section class="card">
       <h2>Ejercicio por semana</h2>
       <p class="hint">Aeróbico: ${s.goals.aerobicMin} min · Fuerza: ${s.goals.strengthMin} ${s.goals.strengthMin === 1 ? "sesión" : "sesiones"}.</p>
     </section>
@@ -213,6 +249,15 @@ function renderSettings() {
       <p class="hint">Días con datos: ${Object.keys(state.data.days).length}.</p>
     </section>
     <p class="note">Rutina LDL · versión ${APP_VERSION}</p>`;
+}
+
+function foodInfo(f) {
+  const beta = f.perUnit ? `${num(f.perUnit.beta)} g por ${f.unit}` : `${num(f.betaPerG, 3)} g por g`;
+  const rest = f.perUnit ? `${num(f.perUnit.kcal, 0)} kcal y ${num(f.perUnit.sat)} g de saturadas por ${f.unit}`
+    : `${num(f.per100.kcal, 0)} kcal y ${num(f.per100.sat)} g de saturadas por 100 g`;
+  const weight = f.gramsPerUnit ? ` · 1 ${f.unit} = ${f.gramsPerUnit} g${f.gramsEstimated ? ' (por pesar)' : ''}` : '';
+  return `<p class="food"><b>${esc(f.name)}</b><span class="hint">${esc(f.note)}${weight}</span>
+    <span class="hint">Beta-glucanos: ${beta} (${f.source})</span><span class="hint">${rest}</span></p>`;
 }
 
 // ---------- Hoja: ejercicio ----------
@@ -284,6 +329,17 @@ view.addEventListener('click', async (e) => {
     await updateDay((d) => { if (d.checks[id]) delete d.checks[id]; else d.checks[id] = true; });
     const y = window.scrollY; render(); window.scrollTo(0, y);
   }
+  else if (a === 'count' || a === 'count-toggle') {
+    const id = el.dataset.id;
+    const step = Number(el.dataset.d) || 0;
+    await updateDay((d) => {
+      const counts = d.counts || (d.counts = {});
+      const cur = counts[id] || 0;
+      const n = a === 'count' ? Math.min(MAX_COUNT, Math.max(0, cur + step)) : cur ? 0 : 1;
+      if (n) counts[id] = n; else delete counts[id];
+    });
+    const y = window.scrollY; render(); window.scrollTo(0, y);
+  }
   else if (a === 'usual') {
     const ids = state.data.settings.usual || [];
     await updateDay((d) => { for (const id of ids) d.checks[id] = true; });
@@ -324,7 +380,7 @@ document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'hidden') {
     const ta = document.getElementById('notes');
     if (ta && notesTimer) { clearTimeout(notesTimer); notesTimer = null; ta.dispatchEvent(new Event('input', { bubbles: true })); }
-  } else if (state.tab === 'hoy' && !sheet.open) {
+  } else if (state.data && state.tab === 'hoy' && !sheet.open) {
     if (state.lastSeenToday && state.lastSeenToday !== todayKey() && state.date === state.lastSeenToday) state.date = todayKey();
     state.lastSeenToday = todayKey();
     render();

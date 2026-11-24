@@ -38,4 +38,6 @@ export function weekRangeLabel(start) {
 }
 
 export const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+/** Número con coma decimal y sin ceros sobrantes. */
+export const num = (n, digits = 2) => Number(n).toLocaleString('es-ES', { maximumFractionDigits: digits });
 export const uid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);

@@ -4,12 +4,13 @@
 // (máximo 100 %), escalando el objetivo semanal a la duración del periodo.
 // El % del periodo es la media de todas las casillas.
 
-import { activeChecks } from './defaults.js';
+import { COUNTERS, activeChecks } from './defaults.js';
 import { todayKey, weekDays, addDays, weekStart } from './util.js';
 
 export function hasData(day) {
   if (!day) return false;
   return Object.values(day.checks || {}).some(Boolean)
+    || Object.values(day.counts || {}).some((n) => n > 0)
     || (day.exercise || []).length > 0 || !!(day.notes || '').trim();
 }
 
@@ -38,6 +39,7 @@ export function periodSummary(keys, data, nDays = Math.max(1, keys.filter((k) =>
     daysWithData: days.length,
     pct: days.length ? Math.round((per.reduce((a, c) => a + c.ratio, 0) / (per.length || 1)) * 100) : null,
     checks: per,
+    counts: COUNTERS.map((c) => ({ ...c, total: days.reduce((a, d) => a + ((d.counts || {})[c.id] || 0), 0) })),
     aerobicMin,
     strengthDays,
   };
@@ -94,7 +96,12 @@ export function weekStats(start, data, today = todayKey()) {
   }));
   const exRow = keys.map((k) => ({ key: k, future: k > today, ...dayExercise(data.days[k]) }));
 
-  return { start, keys, counters, grid, exRow, pct: p.pct, daysWithData: p.daysWithData, period: p };
+  const countRows = COUNTERS.map((c) => ({
+    label: c.short,
+    cells: keys.map((k) => ({ key: k, future: k > today, n: ((data.days[k] || {}).counts || {})[c.id] || 0 })),
+  }));
+
+  return { start, keys, counters, grid, countRows, exRow, pct: p.pct, daysWithData: p.daysWithData, period: p };
 }
 
 /** Días seguidos con la casilla marcada, terminando hoy (o ayer si hoy aún no está marcada). */

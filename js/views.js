@@ -1,7 +1,7 @@
 // Pantallas "Semana" e "Historial" y el resumen semanal de "Hoy".
 
 import { weekStats, periodSummary, hasData, dayExercise, goodWeeksStreak } from './stats.js';
-import { activeChecks } from './defaults.js';
+import { COUNTERS, activeChecks } from './defaults.js';
 import { esc, todayKey, weekStart, weekDays, weekRangeLabel, addDays, parseKey, longDate, shortDate, monthLabel, dayLabel } from './util.js';
 
 const STATUS = {
@@ -58,6 +58,11 @@ export function renderWeek(state) {
     return c.future && !c.done ? '<span class="pt future"></span>'
       : `<span class="pt ${c.done ? 'full' : 'empty'}" title="${esc(t)}" aria-label="${esc(t)}"></span>`;
   }).join('')}</div>`).join('');
+  const countRows = ws.countRows.map((r) => `<div class="grid-row"><span class="glabel">${esc(r.label)}</span>${r.cells.map((c) => {
+    const t = `${r.label}, ${shortDate(c.key)}: ${c.n}`;
+    return c.n ? `<span class="pt q s1" title="${esc(t)}" aria-label="${esc(t)}">${c.n}</span>`
+      : `<span class="pt ${c.future ? 'future' : 'empty'}"></span>`;
+  }).join('')}</div>`).join('');
   const exrow = `<div class="grid-row"><span class="glabel">Ejercicio</span>${ws.exRow.map((c) =>
     c.totalMin || c.strength ? `<span class="pt q s1" title="${esc(shortDate(c.key))}">${c.totalMin ? c.totalMin : 'F'}</span>`
       : `<span class="pt ${c.future ? 'future' : 'empty'}"></span>`).join('')}</div>`;
@@ -78,8 +83,8 @@ export function renderWeek(state) {
 
     <section class="card">
       <h2>Día a día</h2>
-      <div class="wgrid">${head}${rows}${exrow}</div>
-      <p class="legend"><span class="pt full"></span> hecho <span class="pt empty"></span> no hecho · en ejercicio, minutos (F = fuerza)</p>
+      <div class="wgrid">${head}${rows}${countRows}${exrow}</div>
+      <p class="legend"><span class="pt full"></span> hecho <span class="pt empty"></span> no hecho · en galletas, unidades · en ejercicio, minutos (F = fuerza)</p>
       <p class="hint">Toca un día para abrirlo.</p>
     </section>`;
 }
@@ -89,6 +94,10 @@ export function renderWeek(state) {
 function dayChips(state, day) {
   const out = activeChecks(state.data.settings).filter((c) => day.checks && day.checks[c.id])
     .map((c) => `<span class="chip">${esc(c.label)}</span>`);
+  for (const c of COUNTERS) {
+    const n = (day.counts || {})[c.id] || 0;
+    if (n) out.push(`<span class="chip">${esc(c.short)} × ${n}</span>`);
+  }
   for (const x of day.exercise || []) out.push(`<span class="chip">${esc(x.type)}${x.min ? ` ${x.min} min` : ''}</span>`);
   return out.join('');
 }
@@ -111,6 +120,7 @@ function renderDays(state) {
 
 function summaryLine(p) {
   const parts = p.checks.map((c) => `${c.label.toLowerCase()} ${c.count}`);
+  for (const c of p.counts) if (c.total) parts.push(`${c.short.toLowerCase()} ${c.total}`);
   parts.push(`${p.aerobicMin} min ejercicio`, `fuerza ${p.strengthDays}`);
   return `${p.daysWithData} ${p.daysWithData === 1 ? 'día' : 'días'} · ${parts.join(' · ')}`;
 }

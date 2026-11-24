@@ -114,6 +114,7 @@ function normalizeDay(day) {
   const base = emptyDay();
   const out = { ...base, ...(day || {}) };
   out.checks = { ...((day && day.checks) || {}) };
+  out.counts = { ...((day && day.counts) || {}) };
   out.exercise = Array.isArray(day && day.exercise) ? day.exercise : [];
   return out;
 }

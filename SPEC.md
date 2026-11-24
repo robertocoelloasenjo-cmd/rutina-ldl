@@ -96,10 +96,11 @@ Todos los factores son estimaciones y deben ser editables en Ajustes. Mostrar en
 
 | Alimento | Unidad de entrada | Equivalencia | Aporta |
 |---|---|---|---|
-| Copos de avena Alea manzana y canela | g | — | 0,037 g beta-glucanos por g |
+| Copos de avena Alea manzana y canela | g | — | 0,035 g beta-glucanos por g (estimado, avena 87 %); 357 kcal y 0,9 g saturadas por 100 g (etiqueta) |
 | Copos de avena natural | g | — | 0,04 g beta-glucanos por g |
 | Salvado de avena | cucharada o g | 1 cucharada = 8 g | 0,07 g beta-glucanos por g |
-| Galleta de avena Santiveri | unidad | 1 galleta = 12 g (pesar y ajustar) | 0,009 g beta-glucanos por g |
+| Galleta Santiveri avena con salvado (nueva) | unidad | 1 galleta = 11 g | 0,3 g beta-glucanos por galleta (etiqueta: 3,3 g / 100 g); 53 kcal y 0,2 g saturadas por galleta. Primero en desayuno y merienda |
+| Galleta Santiveri avena sin gluten (la antigua, 21 % avena) | unidad | 1 galleta = 12 g (pesar y ajustar) | 0,009 g beta-glucanos por g (estimado); 427 kcal y 1,4 g saturadas por 100 g (etiqueta) |
 | Yogur desnatado | unidad | — | Solo registro |
 | Nueces | g o unidad | 1 nuez entera = 4,5 g | Frutos secos (g) |
 | Almendras | g o unidad | 1 almendra = 1,2 g | Frutos secos (g) |
@@ -142,7 +143,7 @@ Plantillas iniciales:
                 "lastBackupAt": "2026-11-23T18:00:00Z" },
   "foods": [ { "id": "avena-alea", "name": "Copos de avena Alea", "unit": "g", "gramsPerUnit": 1,
                "category": "cereal", "meals": ["desayuno", "cena"],
-               "contributes": { "betaGlucanPerG": 0.037 } } ],
+               "contributes": { "betaGlucanPerG": 0.035 } } ],
   "templates": [ { "id": "desayuno-habitual", "meal": "desayuno", "items": [ { "foodId": "avena-alea", "qty": 17 } ] } ],
   "days": {
     "2026-11-23": {
@@ -170,7 +171,7 @@ Al terminar cada fase: probar en el navegador con tamaño de iPhone, desplegar y
 ## 8. Criterios de aceptación
 
 - Instalada en la pantalla de inicio del iPhone, se abre sin barra de Safari y funciona sin conexión.
-- Apuntar 17 g de avena Alea en el desayuno muestra unos 0,63 g de 3 g de beta-glucanos y una sugerencia para la cena.
+- Apuntar 17 g de avena Alea en el desayuno muestra unos 0,60 g de 3 g de beta-glucanos y una sugerencia para la cena.
 - Apuntar una ensalada con legumbre el lunes y otra el miércoles muestra "Legumbre: 2 de 3 días".
 - Cerrar la app, reiniciar el iPhone y volver a abrirla conserva todos los datos.
 - Exportar en el iPhone, importar en el navegador del PC y ver los mismos días.
