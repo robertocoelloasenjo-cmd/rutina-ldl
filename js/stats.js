@@ -4,8 +4,8 @@
 // (máximo 100 %), escalando el objetivo semanal a la duración del periodo.
 // El % del periodo es la media de todas las casillas.
 
-import { COUNTERS, activeChecks } from './defaults.js';
-import { todayKey, weekDays, addDays, weekStart } from './util.js';
+import { COUNTERS, activeChecks, checkValue, checkUnits } from './defaults.js';
+import { todayKey, weekDays, addDays, weekStart, num } from './util.js';
 
 export function hasData(day) {
   if (!day) return false;
@@ -29,7 +29,8 @@ export function periodSummary(keys, data, nDays = Math.max(1, keys.filter((k) =>
   const checks = activeChecks(data.settings);
   const days = keys.map((k) => data.days[k]).filter(hasData);
   const per = checks.map((c) => {
-    const count = days.filter((d) => d.checks && d.checks[c.id]).length;
+    // Días marcados; en las casillas de raciones, suma de raciones (½ cuenta 0,5).
+    const count = days.reduce((a, d) => a + checkValue(d, c), 0);
     const target = Math.max(1, Math.round((c.target * nDays) / 7));
     return { ...c, count, periodTarget: target, ratio: Math.min(1, count / target) };
   });
@@ -81,6 +82,11 @@ export function weekStats(start, data, today = todayKey()) {
       const marked = g.filter((x) => todayDay && todayDay.checks && todayDay.checks[x.id]).length;
       const slots = daysLeft * g.length + (todayInWeek ? g.length - marked : 0);
       counters.push(counter(g.length > 1 ? 'Avena' : c.label, value, goal, 'tomas', 'toma', slots));
+    } else if (c.portions) {
+      // Cada día puede sumar como mucho 1 ración; hoy, lo que le falte para llegar a 1.
+      const slots = daysLeft + (todayInWeek ? 1 - checkValue(todayDay, c) : 0);
+      const [u, u1] = checkUnits(c);
+      counters.push(counter(c.label, c.count, c.target, u, u1, slots, num));
     } else {
       const marked = !!(todayDay && todayDay.checks && todayDay.checks[c.id]);
       counters.push(counter(c.label, c.count, c.target, 'días', 'día', slotsFor(marked)));
@@ -92,7 +98,7 @@ export function weekStats(start, data, today = todayKey()) {
 
   const grid = p.checks.map((c) => ({
     label: c.label,
-    cells: keys.map((k) => ({ key: k, future: k > today, done: !!(data.days[k] && data.days[k].checks && data.days[k].checks[c.id]) })),
+    cells: keys.map((k) => { const v = checkValue(data.days[k], c); return { key: k, future: k > today, done: v > 0, half: v > 0 && v < 1 }; }),
   }));
   const exRow = keys.map((k) => ({ key: k, future: k > today, ...dayExercise(data.days[k]) }));
 

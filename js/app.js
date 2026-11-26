@@ -1,10 +1,10 @@
 import * as storage from './storage.js';
-import { CHECKS, COUNTERS, FOODS, MAX_COUNT, EXERCISE_TYPES, foodTotals, activeChecks, emptyDay } from './defaults.js';
+import { CHECKS, COUNTERS, FOODS, MAX_COUNT, EXERCISE_TYPES, foodTotals, activeChecks, emptyDay, checkValue, checkUnits } from './defaults.js';
 import { todayKey, addDays, dayLabel, longDate, esc, num, uid, weekStart } from './util.js';
 import { renderWeek, renderWeekSummary, renderHistory } from './views.js';
 import { checkStreak, hasData } from './stats.js';
 
-export const APP_VERSION = '0.6.0';
+export const APP_VERSION = '0.7.0';
 
 const view = document.getElementById('view');
 const sheet = document.getElementById('sheet');
@@ -46,7 +46,9 @@ function renderToday() {
   const checks = activeChecks(state.data.settings);
   const done = checks.filter((c) => day.checks[c.id]).length;
 
-  const boxes = checks.map((c) => { const st = isToday ? checkStreak(state.data, c.id) : 0; return `
+  const boxes = checks.map((c) => { const st = isToday ? checkStreak(state.data, c.id) : 0;
+    if (c.portions) return portionBox(c, checkValue(day, c), st);
+    return `
     <button class="tick ${day.checks[c.id] ? 'on' : ''}" data-action="toggle" data-id="${c.id}" aria-pressed="${!!day.checks[c.id]}">
       <span class="box">${day.checks[c.id] ? '✓' : ''}</span>
       <span class="grow"><b>${esc(c.label)}</b><small>${esc(c.hint)}</small></span>
@@ -113,6 +115,23 @@ function renderToday() {
       <h2>Notas del día</h2>
       <textarea id="notes" placeholder="Por ejemplo: día caótico, comí una empanada">${esc(day.notes || '')}</textarea>
     </section>`;
+}
+
+// Casilla con media ración o ración entera (legumbre).
+function portionBox(c, v, st) {
+  const opt = (val, txt, aria) => `<button class="pbtn ${v === val ? 'sel' : ''}" data-action="portion" data-id="${c.id}" data-v="${val}"
+      aria-pressed="${v === val}" aria-label="${aria}">${txt}</button>`;
+  return `
+    <div class="tick count ${v ? 'on' : ''}">
+      <button class="tickmain" data-action="toggle" data-id="${c.id}" aria-pressed="${!!v}">
+        <span class="box">${v ? (v < 1 ? '½' : '✓') : ''}</span>
+        <span class="grow"><b>${esc(c.label)}</b><small>${esc(c.hint)}</small></span>
+      </button>
+      ${st >= 2 ? `<span class="streak" title="Días seguidos">🔥 ${st}</span>` : ''}
+      <div class="portions" role="group" aria-label="Cantidad de ${esc(c.label.toLowerCase())}">
+        ${opt(0.5, '½', 'Media ración')}${opt(1, '1', 'Ración entera')}
+      </div>
+    </div>`;
 }
 
 // ---------- Copias de seguridad ----------
@@ -216,7 +235,7 @@ function renderSettings() {
   const rows = CHECKS.map((c) => {
     const cur = { ...c, ...(s.checks[c.id] || {}) };
     return `<label class="check"><input type="checkbox" data-action="check-enabled" data-id="${c.id}" ${cur.enabled ? 'checked' : ''}>
-      <span class="grow">${esc(c.label)}<small class="hint" style="display:block">Objetivo: ${cur.target} ${cur.target === 1 ? 'día' : 'días'} por semana</small></span></label>`;
+      <span class="grow">${esc(c.label)}<small class="hint" style="display:block">Objetivo: ${cur.target} ${checkUnits(cur)[cur.target === 1 ? 1 : 0]} por semana${cur.portions ? ' (½ ración cuenta 0,5)' : ''}</small></span></label>`;
   }).join('');
   return `
     <header class="dayhead"><h1>Ajustes</h1></header>
@@ -326,7 +345,16 @@ view.addEventListener('click', async (e) => {
   else if (a === 'go-today') { state.date = todayKey(); render(); window.scrollTo(0, 0); }
   else if (a === 'toggle') {
     const id = el.dataset.id;
-    await updateDay((d) => { if (d.checks[id]) delete d.checks[id]; else d.checks[id] = true; });
+    const c = CHECKS.find((x) => x.id === id);
+    await updateDay((d) => { if (d.checks[id]) delete d.checks[id]; else d.checks[id] = c && c.portions ? 1 : true; });
+    const y = window.scrollY; render(); window.scrollTo(0, y);
+  }
+  else if (a === 'portion') {
+    // Tocar la cantidad ya elegida la quita.
+    const id = el.dataset.id;
+    const v = Number(el.dataset.v);
+    const c = CHECKS.find((x) => x.id === id);
+    await updateDay((d) => { if (checkValue(d, c) === v) delete d.checks[id]; else d.checks[id] = v; });
     const y = window.scrollY; render(); window.scrollTo(0, y);
   }
   else if (a === 'count' || a === 'count-toggle') {

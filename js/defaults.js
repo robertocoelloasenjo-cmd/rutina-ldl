@@ -5,13 +5,16 @@
 export const SCHEMA_VERSION = 3;
 
 // Casillas diarias. "target" = días por semana que se buscan.
+// Las casillas con "portions" se marcan con media ración o ración entera y su objetivo
+// son raciones por semana. En los datos del día se guarda 0.5 o 1; true (días apuntados
+// antes de existir las medias raciones) cuenta como 1.
 // Base: Portfolio Diet (fibra viscosa, frutos secos, proteína vegetal, esteroles,
 // grasa monoinsaturada) y declaraciones de salud de la EFSA.
 export const CHECKS = [
   { id: 'avenaDesayuno', label: 'Avena en el desayuno', hint: 'Copos o salvado de avena (beta-glucanos)', group: 'avena', target: 6, enabled: true },
   { id: 'avenaCena', label: 'Avena en la cena', hint: 'Copos o salvado de avena (beta-glucanos)', group: 'avena', target: 6, enabled: true },
   { id: 'frutosSecos', label: 'Frutos secos', hint: 'Un puñado (~30 g): nueces, almendras, pistachos, avellanas', target: 5, enabled: true },
-  { id: 'legumbre', label: 'Legumbre', hint: 'Lentejas, garbanzos, alubias, soja, edamame, hummus', target: 2, enabled: true },
+  { id: 'legumbre', label: 'Legumbre', hint: '½: garbanzos en ensalada o sopa, hummus · 1: plato de lentejas, cocido…', portions: true, target: 2, enabled: true },
   { id: 'danacol', label: 'Danacol (esteroles)', hint: 'Un bote al día', target: 6, enabled: true },
   { id: 'pescado', label: 'Pescado azul', hint: 'Salmón, sardinas, caballa, boquerón…', target: 2, enabled: false },
 ];
@@ -69,6 +72,17 @@ export function defaultSettings() {
 export function emptyDay() {
   return { checks: {}, counts: {}, exercise: [], notes: '', updatedAt: null };
 }
+
+/** Valor de una casilla en un día: 0 si no está marcada; en las de raciones, 0.5 o 1; en el resto, 1. */
+export function checkValue(day, c) {
+  const v = day && day.checks ? day.checks[c.id] : undefined;
+  if (!v) return 0;
+  if (!c.portions || v === true) return 1;
+  return Math.min(1, Math.max(0, Number(v) || 0));
+}
+
+/** Unidad del objetivo semanal de una casilla: [plural, singular]. */
+export const checkUnits = (c) => (c.portions ? ['raciones', 'ración'] : ['días', 'día']);
 
 /** Casillas activas con su objetivo semanal según los ajustes. */
 export function activeChecks(settings) {
